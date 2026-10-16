@@ -135,3 +135,226 @@ nellore_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
 )
 
 nellore_blood_dds$Treatment <- relevel(dds_rounded$Treatment, ref = "POST")
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"DEG analysis"
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+nellore_blood_dds_deseq <- DESeq(nellore_blood_dds, parallel = TRUE) 
+results_nellore_blood_dds <- results(nellore_blood_dds_deseq)
+results_nellore_blood_dds_df <- as.data.frame(results_nellore_blood_dds)
+
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"PCA analysis - PCA df" 
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+shape_column <- "Treatment"
+label <- TRUE
+label_size <- 3.5 # How big is the labels
+
+# Variance Stabilizing Transformation
+vst_nellore_blood_dds <- vst(nellore_blood_dds, blind = TRUE)
+t_filtered_matrix_counts <- t(assay(vst_nellore_blood_dds))
+metadata_pca <- metadata[rownames(t_filtered_matrix_counts), ,drop = FALSE]
+
+# Computing Principal Components
+pca_nellore_blood_dds <- prcomp(t_filtered_matrix_counts, scale. = F, center = T)
+
+# PLotting Principal Components
+
+pca_plot <- autoplot(
+  pca_nellore_blood_dds,
+  data = metadata_pca,
+  shape = shape_column,
+  label = FALSE
+) +
+  geom_text_repel(
+    aes(label = SampleID),
+    size = label_size
+  ) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black")
+  ) +
+  labs(
+    title = "PCA - Rounded Counts (VST)",
+    shape = "Treatment"
+  )
+ggsave(
+  filename = "PCA_nellore_blood.pdf",
+  plot = pca_plot,
+  width = 8,
+  height = 6
+)
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"PCA analysis - PCA df - test 2" 
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+shape_column <- "Treatment"
+label_size <- 3.5
+
+# Variance Stabilizing Transformation
+vst_nellore_blood_dds <- vst(nellore_blood_dds, blind = TRUE)
+
+t_filtered_matrix_counts <- t(assay(vst_nellore_blood_dds))
+
+metadata_pca <- metadata[
+  rownames(t_filtered_matrix_counts), , drop = FALSE
+]
+
+# Validate sample alignment
+stopifnot(
+  identical(rownames(metadata_pca),
+            rownames(t_filtered_matrix_counts)),
+  !anyNA(metadata_pca$SampleID),
+  !anyNA(metadata_pca$IID),
+  !anyNA(metadata_pca$Treatment)
+)
+
+
+# Computing Principal Components
+pca_nellore_blood_dds <- prcomp(t_filtered_matrix_counts, scale. = FALSE, center = TRUE)
+
+# PCA scores + metadata
+pca_df <- cbind(as.data.frame(pca_nellore_blood_dds$x[, 1:nrow(pca_nellore_blood_dds$x), drop = FALSE]),metadata_pca)
+
+# PCA plot
+pca_plot <- ggplot(
+  pca_df,
+  aes(x = PC1, y = PC2, color = IID, shape = Treatment)
+) +
+  geom_point(size = 4, alpha = 0.9) +
+  geom_text_repel(
+    aes(label = SampleID),
+    size = label_size,
+    max.overlaps = Inf,
+    show.legend = FALSE
+  ) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_shape_manual(values = c("EXP" = 16, "POST" = 17)) +
+  labs(
+    title = "PCA - nellore Blood (VST)",
+    x = paste0("PC1 (", round(variance_explained[1], 2), "%)"),
+    y = paste0("PC2 (", round(variance_explained[2], 2), "%)"),
+    color = "Animal ID",
+    shape = "Treatment"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 17, face = "bold"),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text = element_text(size = 11)
+  )
+
+print(pca_plot)
+
+ggsave(
+  filename = "PCA_nellore_blood.pdf",
+  plot = pca_plot,
+  width = 11,
+  height = 8,
+  units = "in"
+)
+
+# Percentage of variance explained
+variance_explained <- 100 *
+  pca_nellore_blood_dds$sdev^2 /
+  sum(pca_nellore_blood_dds$sdev^2)
+
+# Create variance-explained dataframe
+variance_df <- data.frame(
+  PC = factor(
+    paste0("PC", seq_along(variance_explained)),
+    levels = paste0("PC", seq_along(variance_explained))
+  ),
+  Variance = variance_explained
+)
+
+# Plot variance explained
+variance_plot <- ggplot(
+  variance_df,
+  aes(x = PC, y = Variance)
+) +
+  geom_col(fill = "orange", width = 0.7) +
+  geom_text(
+    aes(label = paste0(round(Variance, 1), "%")),
+    vjust = -0.4,
+    size = 3.2
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.12))
+  ) +
+  labs(
+    title = "Explained Variance - nellore Blood",
+    x = "Principal Components",
+    y = "Variance Explained (%)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(variance_plot)
+
+ggsave(
+  filename = "PCA_variance_nellore_blood.pdf",
+  plot = variance_plot,
+  width = 10,
+  height = 6,
+  units = "in"
+)
+
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+# Investiguating Why weird PCA's
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+# Create QC dataframe, and we check for the CORR(PC1/2 vs Library SIZE)
+qc_samples <- data.frame(
+  SampleID = colnames(nellore_blood_dds),
+  LibrarySize = colSums(counts(nellore_blood_dds)),
+  SizeFactor = sizeFactors(nellore_blood_dds))
+print(qc_samples)
+
+pca_scores <- pca_nellore_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
+correlation_libsize_PC1 <- cor(pca_scores[,"PC1"], log10(qc_samples$LibrarySize)) # -0.18
+correlation_libsize_PC2 <- cor(pca_scores[,"PC2"], log10(qc_samples$LibrarySize)) # -0.48
+
+# SECOND CHECK for the A19 sample:
+detected_genes <- colSums(counts(nellore_blood_dds) > 0)
+qc_detected <- data.frame(
+  SampleID = qc_samples$SampleID,
+  Detected_Genes = detected_genes[qc_samples$SampleID],
+  PC2 = pca_nellore_blood_dds$x[qc_samples$SampleID, "PC2"]
+)
+
+qc_detected$A19 <- grepl("_A19_", qc_detected$SampleID)
+qc_detected[qc_detected$A19, ]
+
+correlation_detected_PC2 <- cor(
+  qc_detected$Detected_Genes,
+  qc_detected$PC2
+)
+
+correlation_without_A19 <- cor(
+  qc_detected$Detected_Genes[!qc_detected$A19],
+  qc_detected$PC2[!qc_detected$A19]
+)
+
+correlation_detected_PC2 # -0.56
+correlation_without_A19 # -0.66
