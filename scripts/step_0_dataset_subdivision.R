@@ -1,4 +1,4 @@
-setwd("/home/adam/Desktop/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_0_dataset_subdivision/")
+setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_0_dataset_subdivision/")
 
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
@@ -68,6 +68,14 @@ gene_count_liver_angus <- gene[,c("gene_id", "gene_name", colnames(gene)[liver_a
 liver_nel_cols <- grepl("^RNA_L_N", colnames(gene))
 gene_count_liver_nellore <- gene[,c("gene_id", "gene_name", colnames(gene)[liver_nel_cols])]
 
+# Stressed Nellore & Stressed Angus together "BLOOD"
+stress_blood_cols <- grepl("^RNA_B_.*_D4$", colnames(gene))
+gene_count_stress_only_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_blood_cols])]
+
+# Stressed Nellore & Stressed Angus together "LIVER"
+stress_liver_cols <- grepl("^RNA_L_.*_D4$", colnames(gene))
+gene_count_stress_only_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_liver_cols])]
+
 
 write.table(gene_count_blood, "gene_count_blood_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(gene_count_liver, "gene_count_liver_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
@@ -75,6 +83,8 @@ write.table(gene_count_blood_angus, "gene_count_blood/gene_count_blood_angus.txt
 write.table(gene_count_blood_nellore, "gene_count_blood/gene_count_blood_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(gene_count_liver_angus, "gene_count_liver/gene_count_liver_angus.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(gene_count_liver_nellore, "gene_count_liver/gene_count_liver_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(gene_count_stress_only_blood, "gene_count_blood/gene_count_blood_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(gene_count_stress_only_liver, "gene_count_liver/gene_count_liver_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 
 
 #########################################################################################################################################################################
@@ -107,6 +117,15 @@ transcripts_liver_angus <- transcripts[,c("tx", "gene_id", colnames(transcripts)
 liver_nel_transcripts_cols <- grepl("^RNA_L_N", colnames(transcripts))
 transcripts_liver_nellore <- transcripts[,c("tx", "gene_id", colnames(transcripts)[liver_nel_transcripts_cols])]
 
+# Stressed Nellore & Stressed Angus together "BLOOD"
+stress_blood_cols <- grepl("^RNA_B_.*_D4$", colnames(transcripts))
+transcripts_stress_only_blood <- transcripts[,c("tx", "gene_id", colnames(transcripts)[stress_blood_cols])]
+
+# Stressed Nellore & Stressed Angus together "LIVER"
+stress_liver_cols <- grepl("^RNA_L_.*_D4$", colnames(transcripts))
+transcripts_stress_only_liver <- transcripts[,c("tx", "gene_id", colnames(transcripts)[stress_liver_cols])]
+
+
 
 write.table(transcripts_blood, "transcripts_blood_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_liver, "transcripts_liver_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
@@ -114,4 +133,6 @@ write.table(transcripts_blood_angus, "transcript_count_blood/transcripts_liver_a
 write.table(transcripts_blood_nellore, "transcript_count_blood/transcripts_blood_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_liver_angus, "transcript_count_liver/transcripts_liver_angus.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_liver_nellore, "transcript_count_liver/transcripts_liver_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(transcripts_stress_only_blood, "transcript_count_blood/transcripts_blood_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(transcripts_stress_only_liver, "transcript_count_liver/transcripts_liver_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 
