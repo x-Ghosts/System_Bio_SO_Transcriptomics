@@ -1,4 +1,4 @@
-setwd("/home/adam/Desktop/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_analysis/blood/angus/")
+setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_analysis/blood/")
 
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
@@ -25,6 +25,7 @@ library(ggrepel)
 library(ggfortify) #install.packages("ggfortify")
 library(stats)
 library(sva)
+library(pheatmap)
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -66,22 +67,33 @@ all(matrix_counts >= 0) # detect negative counts
 range(matrix_counts)
 quantile(matrix_counts, probs = seq(0,1,0.1)) # % of 0's in the data "mean(matrix_counts == 0) * 100"
 
-# Zero Inflated Values
-num_0_per_gene <- rowSums(matrix_counts == 0); View(gene_rows_0)
-percentage_0_gene <- rowMeans(matrix_counts == 0) * 100; View(percentage_0_gene)
-summary(percentage_0_gene)
+# Zero Inflated Values (The commented was a filter on ZERO INFLATED VALUES)
+# num_0_per_gene <- rowSums(matrix_counts == 0); View(gene_rows_0)
+# percentage_0_gene <- rowMeans(matrix_counts == 0) * 100; View(percentage_0_gene)
+# summary(percentage_0_gene)
+# 
+# 
+# empty_genes <- rownames(matrix_counts[num_0_per_gene == ncol(matrix_counts),])
+# genes_0_25pct <- rownames(matrix_counts[percentage_0_gene[] >= 75,])
+# inflated_zeros_gene <- unique(c(empty_genes, genes_0_25pct))
+# 
+# filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% inflated_zeros_gene,] ## GENE CLEANUP
+# 
+# num_0_per_sample <- colSums(filtered_matrix_counts == 0); View(num_0_per_sample)
+# percentage_0_sample <- colMeans(filtered_matrix_counts == 0) * 100; View(percentage_0_sample)
+# summary(percentage_0_sample)
 
+# Low Count Removal:
 
-empty_genes <- rownames(matrix_counts[num_0_per_gene == ncol(matrix_counts),])
-genes_0_25pct <- rownames(matrix_counts[percentage_0_gene[] >= 75,])
-inflated_zeros_gene <- unique(c(empty_genes, genes_0_25pct))
+low_count_threshold <- 3
+percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene were the observation of 3 is at least observed in 80% of my samples
 
-filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% inflated_zeros_gene,] ## GENE CLEANUP
+num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
+percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-num_0_per_sample <- colSums(filtered_matrix_counts == 0); View(num_0_per_sample)
-percentage_0_sample <- colMeans(filtered_matrix_counts == 0) * 100; View(percentage_0_sample)
-summary(percentage_0_sample)
-
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14569
+filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
+nrow(filtered_matrix_counts) #17523 
 
 # Metadata preparation
 
@@ -130,11 +142,11 @@ metadata$IID <- factor(metadata$IID)
 
 # DDS Objects:
 angus_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
-                                          colData = meta,
+                                          colData = metadata,
                                           design = ~ IID + Treatment
 )
 
-dds_rounded$Treatment <- relevel(dds_rounded$Treatment, ref = "POST")
+angus_blood_dds$Treatment <- relevel(angus_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -187,12 +199,7 @@ pca_plot <- autoplot(
     title = "PCA - Rounded Counts (VST)",
     shape = "Treatment"
   )
-ggsave(
-  filename = "PCA_angus_blood.pdf",
-  plot = pca_plot,
-  width = 8,
-  height = 6
-)
+ggsave(filename = "PCA_angus_blood.pdf",plot = pca_plot,width = 8,height = 6)
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -227,46 +234,12 @@ pca_angus_blood_dds <- prcomp(t_filtered_matrix_counts, scale. = FALSE, center =
 
 # PCA scores + metadata
 pca_df <- cbind(as.data.frame(pca_angus_blood_dds$x[, 1:nrow(pca_angus_blood_dds$x), drop = FALSE]),metadata_pca)
+pca_df$Treatment <- factor(pca_df$Treatment)
+pca_df$IID <- factor(pca_df$IID)
 
-# PCA plot
-pca_plot <- ggplot(
-  pca_df,
-  aes(x = PC1, y = PC2, color = IID, shape = Treatment)
-) +
-  geom_point(size = 4, alpha = 0.9) +
-  geom_text_repel(
-    aes(label = SampleID),
-    size = label_size,
-    max.overlaps = Inf,
-    show.legend = FALSE
-  ) +
-  scale_color_brewer(palette = "Dark2") +
-  scale_shape_manual(values = c("EXP" = 16, "POST" = 17)) +
-  labs(
-    title = "PCA - Angus Blood (VST)",
-    x = paste0("PC1 (", round(variance_explained[1], 2), "%)"),
-    y = paste0("PC2 (", round(variance_explained[2], 2), "%)"),
-    color = "Animal ID",
-    shape = "Treatment"
-  ) +
-  theme_classic(base_size = 14) +
-  theme(
-    plot.title = element_text(size = 17, face = "bold"),
-    axis.title = element_text(size = 14, face = "bold"),
-    axis.text = element_text(size = 12),
-    legend.title = element_text(size = 13, face = "bold"),
-    legend.text = element_text(size = 11)
-  )
+animal_shapes <- setNames(c(16, 17, 15, 18, 3, 4, 7, 8),levels(pca_df$IID))
+treatment_colors <- c("EXP" = "#0072B2","POST" = "#D55E00")
 
-print(pca_plot)
-
-ggsave(
-  filename = "PCA_angus_blood.pdf",
-  plot = pca_plot,
-  width = 11,
-  height = 8,
-  units = "in"
-)
 
 # Percentage of variance explained
 variance_explained <- 100 *
@@ -281,6 +254,63 @@ variance_df <- data.frame(
   ),
   Variance = variance_explained
 )
+
+# PCA plot
+plot_pca <- function(pc_x, pc_y) {
+  
+  ggplot(
+    pca_df,
+    aes(
+      x = .data[[pc_x]],
+      y = .data[[pc_y]],
+      color = Treatment,
+      shape = IID
+    )
+  ) +
+    geom_point(size = 2.5, stroke = 1.2) +
+    geom_text_repel(
+      aes(label = SampleID),
+      size = 3.5,
+      max.overlaps = Inf,
+      show.legend = FALSE
+    ) +
+    scale_color_manual(values = treatment_colors) +
+    scale_shape_manual(values = animal_shapes) +
+    labs(
+      title = "PCA - Angus Blood (VST)",
+      x = paste0(
+        pc_x, " (",
+        round(variance_explained[as.integer(sub("PC", "", pc_x))], 2),
+        "%)"
+      ),
+      y = paste0(
+        pc_y, " (",
+        round(variance_explained[as.integer(sub("PC", "", pc_y))], 2),
+        "%)"
+      ),
+      color = "Treatment",
+      shape = "Animal ID"
+    ) +
+    theme_classic(base_size = 14) +
+    theme(
+      plot.title = element_text(size = 17, face = "bold"),
+      axis.title = element_text(size = 14, face = "bold"),
+      axis.text = element_text(size = 12),
+      legend.title = element_text(size = 13, face = "bold"),
+      legend.text = element_text(size = 11)
+    )
+}
+
+pca_plot_12 <- plot_pca("PC1", "PC2")
+pca_plot_34 <- plot_pca("PC3", "PC4")
+
+print(pca_plot_12)
+print(pca_plot_34)
+
+ggsave(filename = "PCA_angus_blood_PC1_PC2.pdf",plot = pca_plot_12,width = 11,height = 8,units = "in")
+ggsave(filename = "PCA_angus_blood_PC3_PC4.pdf",plot = pca_plot_34,width = 11,height = 8,units = "in")
+
+
 
 # Plot variance explained
 variance_plot <- ggplot(
@@ -324,38 +354,166 @@ ggsave(
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-# Create QC dataframe, and we check for the CORR(PC1/2 vs Library SIZE)
-qc_samples <- data.frame(
-         SampleID = colnames(angus_blood_dds),
-         LibrarySize = colSums(counts(angus_blood_dds)),
-         SizeFactor = sizeFactors(angus_blood_dds))
-print(qc_samples)
+## Create QC dataframe, and we check for the CORR(PC1/2 vs Library SIZE)
+# if (is.null(sizeFactors(angus_blood_dds))) {
+#   angus_blood_dds <- estimateSizeFactors(angus_blood_dds)
+# }
+# 
+# qc_samples <- data.frame(
+#          SampleID = colnames(angus_blood_dds),
+#          LibrarySize = colSums(counts(angus_blood_dds)),
+#          SizeFactor = sizeFactors(angus_blood_dds))
+# print(qc_samples)
+# 
+# pca_scores <- pca_angus_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
+# correlation_libsize_PC1 <- cor(pca_scores[,"PC1"], log10(qc_samples$LibrarySize)) # -0.18
+# correlation_libsize_PC2 <- cor(pca_scores[,"PC2"], log10(qc_samples$LibrarySize)) # -0.48
+# 
+# # SECOND CHECK for the A19 sample:
+# detected_genes <- colSums(counts(angus_blood_dds) > 0)
+# qc_detected <- data.frame(
+#   SampleID = qc_samples$SampleID,
+#   Detected_Genes = detected_genes[qc_samples$SampleID],
+#   PC2 = pca_angus_blood_dds$x[qc_samples$SampleID, "PC2"]
+# )
+# 
+# qc_detected$A19 <- grepl("_A19_", qc_detected$SampleID)
+# qc_detected[qc_detected$A19, ]
+# 
+# correlation_detected_PC2 <- cor(
+#   qc_detected$Detected_Genes,
+#   qc_detected$PC2
+# )
+# 
+# correlation_without_A19 <- cor(
+#   qc_detected$Detected_Genes[!qc_detected$A19],
+#   qc_detected$PC2[!qc_detected$A19]
+# )
+# 
+# correlation_detected_PC2 # -0.64
+# correlation_without_A19 # -0.48
 
-pca_scores <- pca_angus_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
-correlation_libsize_PC1 <- cor(pca_scores[,"PC1"], log10(qc_samples$LibrarySize)) # -0.18
-correlation_libsize_PC2 <- cor(pca_scores[,"PC2"], log10(qc_samples$LibrarySize)) # -0.48
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"Heatmap Visualization" 
+######################################################################################################################################################################################
+######################################################################################################################################################################################
 
-# SECOND CHECK for the A19 sample:
-detected_genes <- colSums(counts(angus_blood_dds) > 0)
-qc_detected <- data.frame(
-  SampleID = qc_samples$SampleID,
-  Detected_Genes = detected_genes[qc_samples$SampleID],
-  PC2 = pca_angus_blood_dds$x[qc_samples$SampleID, "PC2"]
+# Extract the transformed matrix VST - The method removes the relationship between the mean & variance of count numbers
+vst_matrix <- assay(vst_angus_blood_dds)
+
+gene_sd <- apply(vst_matrix, 1, sd)
+gene_sd <- sort(gene_sd[is.finite(gene_sd) & gene_sd > 0], decreasing = TRUE)
+
+top_genes <- names(head(gene_sd, 1000))
+heatmap_matrix_top <- vst_matrix[top_genes, , drop = FALSE]
+
+all_genes <- names(gene_sd)
+heatmap_matrix <- vst_matrix[all_genes, , drop = FALSE]
+
+
+metadata_heatmap <- metadata[colnames(heatmap_matrix_top), , drop = FALSE]
+metadata_heatmap_all <- metadata[colnames(heatmap_matrix), , drop = FALSE]
+
+# meta_heatmap$Breed <- factor(meta_heatmap$Breed,
+#                              levels = c("B1", "B2"))
+metadata_heatmap$Treatment <- factor(metadata_heatmap$Treatment,
+                                 levels = c("EXP", "POST"))
+metadata_heatmap_all$Treatment <- factor(metadata_heatmap_all$Treatment,
+                                     levels = c("EXP", "POST"))
+
+sample_order <- with(metadata_heatmap, order(Treatment, IID))
+metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
+
+sample_order_all <- with(metadata_heatmap_all, order(Treatment, IID))
+metadata_heatmap_all <- metadata_heatmap_all[sample_order_all, , drop = FALSE]
+
+rownames(metadata_heatmap) == metadata_heatmap$SampleID # T
+
+annotation_col <- metadata_heatmap[, c("Treatment"), drop = FALSE] #annotation_col <- meta_heatmap[, c("Breed", "Treatment"), drop = FALSE]
+groups <- paste(metadata_heatmap$Treatment)
+gaps <- head(cumsum(rle(groups)$lengths), -1)
+
+annotation_col_all <- metadata_heatmap_all[, c("Treatment"), drop = FALSE] #annotation_col <- meta_heatmap[, c("Breed", "Treatment"), drop = FALSE]
+groups_all <- paste(metadata_heatmap_all$Treatment)
+gaps_all <- head(cumsum(rle(groups_all)$lengths), -1)
+
+plot_1000_no_cluster <- pheatmap(
+  heatmap_matrix_top,
+  scale = "row",
+  cluster_rows = TRUE,
+  clustering_distance_rows = "correlation",
+  cluster_cols = FALSE,
+  gaps_col = gaps,
+  annotation_col = annotation_col,
+  color = colorRampPalette(c("#2166AC", "white", "#B2182B"))(100),
+  border_color = NA,
+  show_rownames = FALSE,
+  show_colnames = TRUE,
+  fontsize_col = 8,
+  angle_col = 90,
+  main = "Top 1000 Variable Genes - VST (Not Clustered - Forcing orders)"
 )
 
-qc_detected$A19 <- grepl("_A19_", qc_detected$SampleID)
-qc_detected[qc_detected$A19, ]
 
-correlation_detected_PC2 <- cor(
-  qc_detected$Detected_Genes,
-  qc_detected$PC2
+plot_1000_cluster <- pheatmap(
+  heatmap_matrix_top,
+  scale = "row",
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  clustering_distance_rows = "correlation",
+  clustering_distance_cols = "correlation",
+  annotation_col = annotation_col,
+  color = colorRampPalette(c("#2166AC", "white", "#B2182B"))(100),
+  border_color = NA,
+  show_rownames = FALSE,
+  show_colnames = TRUE,
+  fontsize_col = 8,
+  angle_col = 90,
+  main = "Top 1000 Variable Genes - VST (Clustered)"
 )
 
-correlation_without_A19 <- cor(
-  qc_detected$Detected_Genes[!qc_detected$A19],
-  qc_detected$PC2[!qc_detected$A19]
+plot_all_no_cluster <- pheatmap(
+  heatmap_matrix,
+  scale = "row",
+  cluster_rows = TRUE,
+  clustering_distance_rows = "correlation",
+  cluster_cols = FALSE,
+  gaps_col = gaps_all,
+  annotation_col = annotation_col_all,
+  color = colorRampPalette(c("#2166AC", "white", "#B2182B"))(100),
+  border_color = NA,
+  show_rownames = FALSE,
+  show_colnames = TRUE,
+  fontsize_col = 8,
+  angle_col = 90,
+  main = "All Variable Genes - VST (Not Clustered - Forcing orders)"
 )
 
-correlation_detected_PC2 # -0.56
-correlation_without_A19 # -0.66
+plot_all_cluster <- pheatmap(
+  heatmap_matrix,
+  scale = "row",
+  cluster_rows = TRUE,
+  clustering_distance_rows = "correlation",
+  cluster_cols = TRUE,
+  gaps_col = gaps_all,
+  annotation_col = annotation_col_all,
+  color = colorRampPalette(c("#2166AC", "white", "#B2182B"))(100),
+  border_color = NA,
+  show_rownames = FALSE,
+  show_colnames = TRUE,
+  fontsize_col = 8,
+  angle_col = 90,
+  main = "All Variable Genes - VST (Clustered)"
+)
 
+heatmap_plots <- list(
+  "Heatmap_Top1000_Ordered.pdf" = plot_1000_no_cluster,
+  "Heatmap_Top1000_Clustered.pdf" = plot_1000_cluster,
+  "Heatmap_All_Ordered.pdf" = plot_all_no_cluster,
+  "Heatmap_All_Clustered.pdf" = plot_all_cluster)
+
+
+for (filename in names(heatmap_plots)) {
+  ggsave(filename = filename, plot = heatmap_plots[[filename]]$gtable, width = 11,height = 8,units = "in")
+}
