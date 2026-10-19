@@ -1,4 +1,4 @@
-setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_analysis/blood/")
+setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_visualization_PCA_Heatmap/blood/")
 
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
