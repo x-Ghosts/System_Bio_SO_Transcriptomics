@@ -169,8 +169,8 @@ padjusted_results_angus_blood_dds_df <- padjusted_results_angus_blood_dds_df[pad
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-fdr_cutoff <- 0.1 #0.05
-lfc_cutoff <- 0.58 #1
+fdr_cutoff <- 0.05 #0.1
+lfc_cutoff <- 1 #0.58
 n_labels <- 35
 
 resultsNames(angus_blood_dds_deseq)
@@ -251,7 +251,7 @@ print(volcano_plot_angus)
 ggsave("Volcano_Angus_Blood.pdf",plot = volcano_plot_angus,width = 10,height = 7)
 
 
-# Check the normalized expression
+# Check the normalized expression and evaluation of POSSIBLE LINEAR RELATIONSHIP. NONE SEEMS TO BE IT.
 ido1_counts <- plotCounts(
   angus_blood_dds_deseq,
   gene = "IDO1",
