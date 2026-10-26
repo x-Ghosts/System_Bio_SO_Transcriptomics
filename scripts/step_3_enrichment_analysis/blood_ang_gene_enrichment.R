@@ -12,6 +12,10 @@ library(clusterProfiler)
 library(org.Bt.eg.db)
 library(enrichplot)
 library(patchwork)
+library(ggplot2)
+library(pathview)
+library(KEGGREST)
+
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -22,6 +26,8 @@ library(patchwork)
 # Loading the dataset containing DEGS
 results_angus_blood_dds_df <- read.delim("results_df_blood_angus_genes.txt", header = TRUE, stringsAsFactors = FALSE)
 significants_blood_genes <- read.delim("significant_blood_angus_genes.txt", header = TRUE, stringsAsFactors = FALSE)
+results_angus_blood_dds_df$gene <- rownames(results_angus_blood_dds_df)
+significants_blood_genes$gene <- rownames(significants_blood_genes)
 significant_gene_ids <- significants_blood_genes$gene
 
 #Extracting the annotation db of Bos Taurus - org.Bt.eg.db + Mapping
@@ -161,9 +167,334 @@ kegg_angus_jp <- enrichKEGG(
 )
 
 kegg_angus_jp <- as.data.frame(kegg_angus_jp)
-#genes_to_check <- c("TULP2", "KDM4B", "B4GALT2", "PRR14L", "HDAC4", "ATG16L2", "PPARD", "TENM4", "WNK2", "FMO2", "STYXL1", "TRIO", "RAB27B", "DBP", "LZTR1", "SEC14L5", "GRIA1", "XPR1", "SIGIRR", "NR2E1", "CCL5", "WWOX", "ATF6B", "ADD1", "DDX23", "CAPZB", "DLG5", "SNRNP200", "RUNX1", "IHH", "FARSA", "DKKL1", "ACVR2B", "GDNF", "MARK2", "FAM131C", "FBLN2", "HSD17B14", "RABIF", "UBN1", "EIF2AK1", "ZNF133", "CH25H", "CSNK1D", "GJB3", "FBXL13", "TIMELESS", "TMEM159", "MEF2D", "MACROD1", "MTFMT", "F9", "CACNA1C", "SUGP1", "GAS6", "bta-mir-10b", "RNF26", "WNT5A", "ERI3", "EPHA2", "RALGAPA2", "ISCA2", "PHF19", "KIAA1324L", "CFAP61", "KRT72", "STK11IP", "RMDN3", "MRPL40", "EFCAB6", "MAPK8IP3", "CAD", "PIGZ", "AGAP3", "FGFR2", "FKBP10", "KCTD10", "HPS1", "GTPBP1", "INPP5E", "RANBP10", "NRG1", "GTF2IRD1", "SULT2B1", "GRM4", "PANK4", "PNOC", "C1QTNF6", "CACNA1G", "UBTD1")
-#angus_methylation_genes <- c("TBC1D22A", "MYH9", "ERGIC1", "MED27", "FBXL19", "ATG7", "ACADL", "GALNT9", "SETD1A", "MFSD14B", "PHKA1", "PARN", "PLPP3", "PARVB", "KIAA1324L", "PHLDB1", "CRB1", "CDH10", "MOB3B", "WWOX", "SMG6", "CRTC1", "MLH1", "UBXN6", "WDFY4", "CCDC36", "MMD2", "USP13", "ONECUT1", "POR", "THOC3", "MAP4K2", "PDZRN3", "EPB41L4B", "ZNF827", "MAP2K1", "SEPT14", "TMC4", "HUNK", "BCR", "MATN2", "INSC", "PDE4DIP", "PACRG", "TTC7B", "TDRD9", "IMPDH1", "ATP13A1", "CDK17", "MGLL", "U6", "LIMK2", "ANKRD29", "TRAPPC9", "PPARA", "HADH", "GAS7", "TEKT5", "BPI", "PTBP1", "FHAD1", "ERF", "B4GALT1", "MYBPC2", "PNMA1", "PSD4", "XPO4", "DLK1", "FMNL2", "POLR3B", "MPPED2", "SCARB1", "NRP1", "PGM1", "EVC2", "NBEA", "CRYL1", "CCDC85A", "CLPTM1", "RBFOX1", "ZFAND3", "OPTN", "CTNNA3", "DMTN", "GRHL2", "ASTE1", "GRIN2B", "KIF1C", "COL20A1", "SLC25A21", "MELK", "GSG1L", "SOX10", "KAT2B", "PPP1R10", "PNPLA7", "EML1", "ACVR1B", "SRC", "CCDC158", "DHX34", "MLLT6", "RGMA", "KLHL40", "TWIST2", "TMEM266", "GRK3", "ATP1A3", "GNA15", "KANSL2", "PHACTR1", "LHFPL1", "PTBP3", "ACOX2", "TNRC18", "DNM2", "KHNYN", "NLRX1", "ZFAND1", "EFTUD2", "NDRG1", "ZNF692", "YIF1B", "EZR", "CIB4", "SIRT7", "ZNF594", "AGPAT4", "PTTG1IP", "KIAA0586", "PTK2B", "CHMP6", "DAGLB", "EPHA2", "CSAD", "NDE1", "CSNK1G1", "ME3", "IL1R1", "DYNLT1", "ARHGAP35", "ABLIM2", "UBN2", "GRAMD1B", "RPRD1B", "ARHGAP25", "CTNNA1", "IGF2R", "GADD45A", "APBB1IP", "ITPRIPL2", "PID1", "GGCX", "LCT", "DLGAP4", "RAP1GAP", "RNF43", "STAC", "PROM1", "TMED3", "PTPRO", "CLCN2", "DRD3", "TECPR2", "ZNF532", "FAM196A", "RECK", "PCBP3", "KRT85", "CSK", "E2F1", "PNMA2", "L3MBTL2", "ADCK1", "TYROBP", "WBSCR17", "COL16A1", "HS3ST3A1", "TUBB1", "CCR4", "LIG1", "HDAC4", "POLA2", "SCUBE1", "REXO1", "MTNR1A", "FAM178B", "CHKA", "CGN", "KCNMA1", "NRP2", "DTX4", "SLC11A1", "KIRREL", "PERM1", "SLC25A37", "TBXA2R", "HTRA1", "LBH", "PIGF", "UHRF1BP1", "LRRC27", "HIP1R", "ATP11A", "NKX2-5", "AP2A2", "STUM", "FLYWCH2", "SLC43A2", "NAA25", "EVX1", "SYNE2", "CAMTA2", "IQCD", "BCL2", "SERGEF", "AIM1L", "TRPV6", "SEC63", "IP6K3", "SEC14L5", "CALD1", "ETS1", "TGFB3", "PARP11", "GRIP2", "GLDN", "KCND2", "ELAC2", "SLC45A1", "CPT1A", "ERBB3", "MAP3K14", "OSBP2", "SLC6A6", "C19orf68", "WNK2", "ACIN1", "UBAC1", "HLTF", "ABCA12", "PLCXD3", "MACROD1", "TCF4", "CTNNBL1", "TTYH2", "NFATC1", "HERC2", "ABCA13", "EVL", "EPHA1", "PAPSS2", "POLN", "CAPN5", "ZNF423", "NR2C2", "WWC1", "KLHL31", "GATB", "TOM1L2", "IFT88", "MAN1C1", "VWA5B1", "CC2D1A", "FNIP2", "TRANK1", "NEK7", "ACAD11", "ERI3", "TRAPPC5", "SMC1B", "COL5A1", "KCND3", "DCP1B", "RERE", "MLXIP", "LRP5", "CTIF", "LMX1A", "STX8", "CFAP77", "ITFG1", "EFCAB6", "HEG1", "ANAPC5", "CLIC5", "SERPINE1", "EXT2", "RHEB", "LRRC30", "MFSD4A", "UNC45A", "LONRF2", "PAX7", "EBF3", "LAMA1", "NPFF", "MYO1E", "WWC2", "PSAP", "FARS2", "CERK", "DNAH17", "PIGG", "MAP2K4", "LRP1", "MIPEP", "MINK1", "SNRPA", "EXOC3", "NFIA", "TMEM94", "TBC1D14", "RUNX3", "EPN2", "TXNRD1", "WDR1", "IGSF21", "EVI5L", "SIL1", "NFATC2", "TBCD", "DXO", "CELF2", "DUOX1", "TRMT1", "MAD1L1", "RNF157")
 
-genes_found <- intersect(angus_methylation_genes, kegg_significant_genes)
-genes_not_found <- setdiff(angus_methylation_genes, kegg_significant_genes)
+kegg_angus_jp$gene_SYMBOL <- vapply(
+  strsplit(kegg_angus_jp$geneID, "/", fixed = TRUE),
+  function(ids) {
+    symbols <- kegg_angus$SYMBOL[
+      match(ids, kegg_angus$ENTREZID)
+    ]
+    paste(symbols, collapse = "/")
+  },
+  character(1)
+)
 
+
+kegg_bubble <- ggplot(
+  kegg_angus_jp,
+  aes(
+    x = RichFactor,
+    y = reorder(Description, RichFactor),
+    size = Count,
+    color = p.adjust
+  )
+) +
+  geom_point(alpha = 0.9) +
+  scale_color_gradient(
+    low = "red",
+    high = "blue",
+    name = "Adjusted p-value"
+  ) +
+  scale_size_continuous(range = c(5, 12)) +
+  labs(
+    title = "KEGG Pathway Enrichment - Angus Blood",
+    subtitle = "EXP vs POST | Significant DEGs",
+    x = "Rich Factor",
+    y = NULL,
+    size = "Gene Count"
+  ) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.y = element_text(size = 11)
+  )
+
+print(kegg_bubble)
+
+ggsave("KEGG_Angus_Blood_Bubble.pdf",plot = kegg_bubble,width = 11,height = 6)
+
+
+#####################################################################
+# KEGG Pathview - Native KEGG + Blue/Red log2FC
+#####################################################################
+
+#####################################################################
+# Prepare log2FC values for KEGG Pathview
+#####################################################################
+
+# 1. Match log2FC values to ENTREZ IDs
+gene_fc <- results_angus_blood_dds_df$log2FoldChange[
+  match(kegg_angus$SYMBOL, results_angus_blood_dds_df$gene)
+]
+
+names(gene_fc) <- kegg_angus$ENTREZID
+
+# 2. Remove missing values and duplicated ENTREZ IDs
+gene_fc <- gene_fc[is.finite(gene_fc)]
+gene_fc <- gene_fc[!duplicated(names(gene_fc))]
+
+pv_out <- list()
+kegg_node_tables <- list()
+
+symbol_map <- setNames(
+  kegg_angus$SYMBOL,
+  kegg_angus$ENTREZID
+)
+
+for (i in seq_len(nrow(kegg_angus_jp))) {
+  
+  pathway_full_id <- kegg_angus_jp$ID[i]
+  pathway_id <- sub("^bta", "", pathway_full_id)
+  
+  # Significant genes in this pathway only
+  pathway_genes <- strsplit(
+    kegg_angus_jp$geneID[i], "/"
+  )[[1]]
+  
+  gene_fc_pathway <- gene_fc[pathway_genes]
+  gene_fc_pathway <- gene_fc_pathway[
+    is.finite(gene_fc_pathway)
+  ]
+  
+  if (length(gene_fc_pathway) == 0) next
+  
+  suffix <- paste0("Angus_", pathway_full_id, "_CyanOrange")
+  
+  # Preserve original KEGG labels and shapes
+  pv_out[[pathway_full_id]] <- pathview(
+    gene.data = gene_fc_pathway,
+    pathway.id = pathway_id,
+    species = "bta",
+    gene.idtype = "entrez",
+    kegg.native = TRUE,
+    same.layer = FALSE,
+    map.symbol = FALSE,
+    node.sum = "mean",
+    limit = list(gene = 1, cpd = 1),
+    low = list(gene = "cyan", cpd = "cyan"),
+    mid = list(gene = "grey90", cpd = "grey90"),
+    high = list(gene = "orange", cpd = "orange"),
+    both.dirs = list(gene = TRUE, cpd = TRUE),
+    na.col = "transparent",
+    out.suffix = suffix, kegg.dir = "KEGG_pathways/angus/"
+  )
+  
+  # Retrieve mapped KEGG nodes
+  pv_nodes <- pv_out[[pathway_full_id]]$plot.data.gene
+  
+  # Identify exactly which significant genes mapped to each node
+  mapped_ids <- lapply(pv_nodes$all.mapped, function(x) {
+    
+    if (is.na(x) || !nzchar(x)) return(character(0))
+    
+    ids <- trimws(strsplit(x, ",", fixed = TRUE)[[1]])
+    
+    intersect(ids, names(gene_fc_pathway))
+  })
+  
+  # Convert Entrez IDs to symbols
+  symbol_labels <- vapply(mapped_ids, function(ids) {
+    
+    if (length(ids) == 0) return("")
+    
+    symbols <- unname(symbol_map[ids])
+    symbols[is.na(symbols)] <- ids[is.na(symbols)]
+    
+    paste(unique(symbols), collapse = "\n")
+    
+  }, character(1))
+  
+  # Store mapping information
+  kegg_node_tables[[pathway_full_id]] <- data.frame(
+    KEGG_Node = rownames(pv_nodes),
+    KEGG_KGML_Label = pv_nodes$labels,
+    Significant_Symbols = gsub("\n", "/", symbol_labels),
+    stringsAsFactors = FALSE
+  )
+  
+  ###################################################################
+  # Optional: Add significant gene lists ABOVE shared KEGG nodes
+  ###################################################################
+  
+  shared_nodes <- which(lengths(mapped_ids) > 1)
+  
+  if (length(shared_nodes) > 0) {
+    
+    input_png <- paste0(
+      pathway_full_id, ".", suffix, ".png"
+    )
+    
+    output_png <- paste0(
+      pathway_full_id, ".", suffix, "_Labeled.png"
+    )
+    
+    img <- png::readPNG(input_png)
+    
+    h <- dim(img)[1]
+    w <- dim(img)[2]
+    
+    png(output_png, width = w, height = h)
+    
+    par(mar = c(0, 0, 0, 0))
+    plot.new()
+    plot.window(
+      xlim = c(0, w),
+      ylim = c(0, h),
+      xaxs = "i",
+      yaxs = "i"
+    )
+    
+    rasterImage(img, 0, 0, w, h, interpolate = FALSE)
+    
+    # Add names above nodes, without replacing original KEGG labels
+    text(
+      x = pv_nodes$x[shared_nodes],
+      y = h - pv_nodes$y[shared_nodes] +
+        pv_nodes$height[shared_nodes] / 2 + 8,
+      labels = symbol_labels[shared_nodes],
+      cex = 0.55,
+      adj = c(0.5, 0),
+      col = "black",
+      font = 2
+    )
+    
+    dev.off()
+  }
+}
+
+#####################################################################
+# Replace Pathview Labels with My RNA-seq Gene Symbols
+#####################################################################
+
+for (pathway_full_id in names(pv_out)) {
+  
+  pv_nodes <- pv_out[[pathway_full_id]]$plot.data.gene
+  
+  # Significant genes belonging to this pathway
+  pathway_genes <- strsplit(
+    kegg_angus_jp$geneID[
+      match(pathway_full_id, kegg_angus_jp$ID)
+    ],
+    "/"
+  )[[1]]
+  
+  # Extract significant Entrez IDs mapped to each node
+  mapped_ids <- lapply(pv_nodes$all.mapped, function(x) {
+    
+    if (is.na(x) || !nzchar(x)) return(character(0))
+    
+    ids <- trimws(strsplit(x, ",", fixed = TRUE)[[1]])
+    
+    intersect(ids, pathway_genes)
+  })
+  
+  # Convert Entrez IDs using my own dataset
+  gene_labels <- vapply(mapped_ids, function(ids) {
+    
+    if (length(ids) == 0) return("")
+    
+    symbols <- kegg_angus$SYMBOL[
+      match(ids, kegg_angus$ENTREZID)
+    ]
+    
+    symbols[is.na(symbols)] <- ids[is.na(symbols)]
+    
+    paste(unique(symbols), collapse = "\n")
+    
+  }, character(1))
+  
+  # Keep only significant mapped nodes
+  keep <- nzchar(gene_labels) & is.finite(pv_nodes$mol.data)
+  
+  pv_nodes <- pv_nodes[keep, , drop = FALSE]
+  pv_nodes$labels <- gene_labels[keep]
+  
+  if (nrow(pv_nodes) == 0) next
+  
+  # Redraw using my own gene symbols
+  pathview::keggview.native(
+    plot.data.gene = pv_nodes, kegg.dir = "KEGG_pathways/angus/",
+    cols.ts.gene = matrix(pv_nodes$mol.col, ncol = 1),
+    node.data = pathview::node.info(
+      paste0(pathway_full_id, ".xml")
+    ),
+    pathway.name = pathway_full_id,
+    same.layer = FALSE,
+    low = list(gene = "cyan", cpd = "cyan"),
+    mid = list(gene = "grey90", cpd = "grey90"),
+    high = list(gene = "orange", cpd = "orange"),
+    limit = list(gene = 1, cpd = 1),
+    out.suffix = paste0(
+      "Angus_", pathway_full_id, "_GeneSymbols"
+    )
+  )
+}
+
+# Requires a fix
+# #####################################################################
+# # KEGG - Original Nodes vs Pathview Mapped Genes
+# #####################################################################
+# 
+# pathview_mapping <- dplyr::bind_rows(
+#   lapply(names(pv_out), function(pathway_id) {
+#     
+#     # Pathview mapped nodes
+#     pv_nodes <- pv_out[[pathway_id]]$plot.data.gene
+#     
+#     # Original KEGG node information
+#     kegg_nodes <- pathview::node.info(
+#       paste0(pathway_id, ".xml"),
+#       short.name = FALSE
+#     )
+#     
+#     node_ids <- rownames(pv_nodes)
+#     
+#     # Build node mapping table
+#     data.frame(
+#       ID = pathway_id,
+#       KEGG_Node = node_ids,
+#       Original_KEGG_Label = unname(kegg_nodes$labels[node_ids]),
+#       Original_Node_Genes = vapply(
+#         node_ids,
+#         function(id) {
+#           paste(
+#             sub("^bta:", "", kegg_nodes$kegg.names[[id]]),
+#             collapse = "/"
+#           )
+#         },
+#         character(1)
+#       ),
+#       Pathview_Label = pv_nodes$labels,
+#       EntrezID = pv_nodes$all.mapped,
+#       Node_log2FC = pv_nodes$mol.data,
+#       stringsAsFactors = FALSE
+#     ) %>%
+#       dplyr::filter(!is.na(EntrezID), EntrezID != "") %>%
+#       tidyr::separate_rows(EntrezID, sep = ",") %>%
+#       dplyr::mutate(EntrezID = trimws(EntrezID))
+#   })
+# )
+# 
+# # Compare with the original enrichment genes
+# kegg_mapping_comparison <- kegg_angus_pathway_genes %>%
+#   dplyr::transmute(
+#     ID,
+#     Description,
+#     EntrezID = as.character(geneID),
+#     Gene_Symbol = SYMBOL
+#   ) %>%
+#   dplyr::left_join(
+#     pathview_mapping,
+#     by = c("ID", "EntrezID")
+#   ) %>%
+#   dplyr::mutate(
+#     Mapping_Status = ifelse(
+#       is.na(KEGG_Node),
+#       "Not mapped",
+#       "Mapped"
+#     )
+#   )
+# 
+# View(kegg_mapping_comparison)
+# 
+# 
