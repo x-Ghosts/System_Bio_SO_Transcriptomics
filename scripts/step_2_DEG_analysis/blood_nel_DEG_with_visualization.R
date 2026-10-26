@@ -1,5 +1,6 @@
 setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_2_DEG_analysis/blood/")
 
+
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -38,13 +39,13 @@ library(apeglm)
 # Original gene-count matrix - Annotation set
 # ============================================================
 
-gene_count_nellore_blood <- read.table("gene_count_blood/gene_count_blood_nellore.txt", header = T, sep = "\t", stringsAsFactors = F)
-nellore_samples_ids<- grepl("^RNA_B_A", colnames(gene_count_nellore_blood))
-nellore_samples_ids_names <- colnames(gene_count_nellore_blood[,-c(1,2)])
-gene_names <- gene_count_nellore_blood[,1:2] 
+gene_count_Nellore_blood <- read.table("gene_count_blood/gene_count_blood_nellore.txt", header = T, sep = "\t", stringsAsFactors = F)
+Nellore_samples_ids<- grepl("^RNA_B_N", colnames(gene_count_Nellore_blood))
+Nellore_samples_ids_names <- colnames(gene_count_Nellore_blood[,-c(1,2)])
+gene_names <- gene_count_Nellore_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
-matrix_counts <- gene_count_nellore_blood[, nellore_samples_ids]
+matrix_counts <- gene_count_Nellore_blood[, Nellore_samples_ids]
 matrix_counts <- as.matrix(matrix_counts, drop=FALSE)
 rownames(matrix_counts) <- gene_names$gene_id
 
@@ -92,13 +93,14 @@ percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene
 num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
 percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14569
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #15180
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #17523 
+nrow(filtered_matrix_counts) #16912 
+
 
 # Metadata preparation
 
-sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", nellore_samples_ids_names, proto = list(
+sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", Nellore_samples_ids_names, proto = list(
   BreedCode = character(),
   AnimalNumber = character(),
   Treatment = character()
@@ -106,7 +108,7 @@ sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", nellore_samples_ids_
 )
 
 metadata <- data.frame(
-  SampleID = nellore_samples_ids_names,
+  SampleID = Nellore_samples_ids_names,
   IID = paste0(sample_info$BreedCode, sample_info$AnimalNumber),
   Treatment = sample_info$Treatment,
   stringsAsFactors = FALSE
@@ -142,26 +144,30 @@ metadata$IID <- factor(metadata$IID)
 # ============================================================
 
 # DDS Objects:
-nellore_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
+Nellore_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
                                           colData = metadata,
                                           design = ~ IID + Treatment
 )
 
-nellore_blood_dds$Treatment <- relevel(nellore_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
+Nellore_blood_dds$Treatment <- relevel(Nellore_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 "DEG analysis"
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
-FDR <- 0.1
+FDR <- 0.05
+lfc <- 1
 
-nellore_blood_dds_deseq <- DESeq(nellore_blood_dds, parallel = TRUE) # 17523
-results_nellore_blood_dds <- results(nellore_blood_dds_deseq)
-results_nellore_blood_dds_df <- as.data.frame(results_nellore_blood_dds)
+Nellore_blood_dds_deseq <- DESeq(Nellore_blood_dds, parallel = TRUE) # 16912
+results_Nellore_blood_dds <- results(Nellore_blood_dds_deseq)
+results_Nellore_blood_dds_df <- as.data.frame(results_Nellore_blood_dds)
 
-padjusted_results_nellore_blood_dds_df <- results_nellore_blood_dds_df[!is.na(results_nellore_blood_dds_df$padj),,drop = FALSE] # 11068
-padjusted_results_nellore_blood_dds_df <- padjusted_results_nellore_blood_dds_df[padjusted_results_nellore_blood_dds_df$padj < FDR,] # 43
+padjusted_results_Nellore_blood_dds_df <- results_Nellore_blood_dds_df[!is.na(results_Nellore_blood_dds_df$padj),,drop = FALSE] # 7403
+names_to_test <- rownames(padjusted_results_Nellore_blood_dds_df)
+test_matrix <- filtered_matrix_counts[rownames(filtered_matrix_counts) %in% names_to_test,]
+padjusted_results_Nellore_blood_dds_df <- padjusted_results_Nellore_blood_dds_df[padjusted_results_Nellore_blood_dds_df$padj < FDR & 
+                                                                               abs(padjusted_results_Nellore_blood_dds_df$log2FoldChange) > lfc,] # 18
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -169,17 +175,17 @@ padjusted_results_nellore_blood_dds_df <- padjusted_results_nellore_blood_dds_df
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-fdr_cutoff <- 0.1 #0.05
-lfc_cutoff <- 0.58 #1
+fdr_cutoff <- 0.05 #0.1
+lfc_cutoff <- 1 #0.58
 n_labels <- 35
 
-resultsNames(nellore_blood_dds_deseq)
+resultsNames(Nellore_blood_dds_deseq)
 coef_name <- "Treatment_EXP_vs_POST" # The statistical comparison of the Design Model ~ IID + Treatment
 
-res_nellore <- results(nellore_blood_dds_deseq, name = coef_name, alpha = fdr_cutoff)
-res_nellore_shrunk <- lfcShrink(nellore_blood_dds_deseq, coef = coef_name, res = res_nellore, type = "apeglm")
+res_Nellore <- results(Nellore_blood_dds_deseq, name = coef_name, alpha = fdr_cutoff)
+res_Nellore_shrunk <- lfcShrink(Nellore_blood_dds_deseq, coef = coef_name, res = res_Nellore, type = "apeglm")
 
-volcano_df <- as.data.frame(res_nellore_shrunk)
+volcano_df <- as.data.frame(res_Nellore_shrunk)
 volcano_df$gene <- rownames(volcano_df)
 
 volcano_df <- volcano_df[!is.na(volcano_df$padj) &is.finite(volcano_df$log2FoldChange),, drop = FALSE]
@@ -204,7 +210,8 @@ status_colors <- c(
 )
 status_colors["UP in EXP"] <- "#D73027"
 
-volcano_plot_nellore <- ggplot(
+
+volcano_plot_Nellore <- ggplot(
   volcano_df,
   aes(x = log2FoldChange, y = neglog10padj)
 ) +
@@ -213,6 +220,7 @@ volcano_plot_nellore <- ggplot(
     alpha = 0.65,
     size = 1.5
   ) +
+  
   scale_color_manual(
     values = status_colors,
     drop = FALSE
@@ -234,9 +242,9 @@ volcano_plot_nellore <- ggplot(
     max.overlaps = Inf
   ) +
   labs(
-    title = "Volcano Plot - nellore Blood",
-    subtitle = paste("EXP vs POST | DESeq2"),
-    x = paste0("log2FoldChange ( EXP vs POST)"),
+    title = "Volcano Plot - Nellore Blood",
+    subtitle = "EXP vs POST | DESeq2",
+    x = "log2FoldChange (EXP vs POST)",
     y = "-log10(adjusted p-value)",
     color = "Gene classification"
   ) +
@@ -246,87 +254,9 @@ volcano_plot_nellore <- ggplot(
     legend.position = "right"
   )
 
-print(volcano_plot_nellore)
+print(volcano_plot_Nellore)
 
-ggsave("Volcano_nellore_Blood.pdf",plot = volcano_plot_nellore,width = 10,height = 7)
-
-
-# Check the normalized expression
-ido1_counts <- plotCounts(
-  nellore_blood_dds_deseq,
-  gene = "IDO1",
-  intgroup = c("IID", "Treatment"),
-  returnData = TRUE
-)
-
-ggplot(
-  ido1_counts,
-  aes(x = Treatment, y = count, group = IID)
-) +
-  geom_line(color = "white") +
-  geom_point(aes(color = IID), size = 3) +
-  scale_y_log10() +
-  theme_classic(base_size = 13) +
-  labs(
-    title = "IDO1 - Normalized Gene Counts across the samples",
-    x = "Treatment",
-    y = "Normalized Count"
-  )
-
-ido1_pairs <- pivot_wider(
-  ido1_counts,
-  id_cols = IID,
-  names_from = Treatment,
-  values_from = count
-)
-
-# Correlation across animals
-r <- cor(
-  log2(ido1_pairs$EXP),
-  log2(ido1_pairs$POST),
-  method = "pearson"
-)
-
-ido1_pairs$log2FC <- log2(
-  ido1_pairs$EXP / ido1_pairs$POST
-)
-
-print(ido1_pairs)
-
-ggplot(ido1_pairs, aes(x = EXP, y = POST)) +
-  geom_point(aes(color = IID), size = 3.5) +
-  geom_text_repel(aes(label = IID), size = 3.5) +
-  geom_smooth(
-    method = "lm",
-    se = TRUE,
-    color = "black"
-  ) +
-  scale_x_log10() +
-  scale_y_log10() +
-  labs(
-    title = "IDO1 - EXP vs POST",
-    subtitle = paste0("Pearson r = ", round(r, 3)),
-    x = "EXP - Normalized Counts",
-    y = "POST - Normalized Counts",
-    color = "Animal ID"
-  ) +
-  theme_classic(base_size = 14)
-
-
-# dds <- nellore_blood_dds_deseq
-# samples <- colnames(dds)
-# 
-# ido1_QC <- data.frame(
-#   SampleID = samples,
-#   Raw_Counts = as.numeric(matrix_counts["IDO1", samples]),
-#   DESeq_Raw = as.numeric(counts(dds)["IDO1", samples]),
-#   SizeFactor = sizeFactors(dds),
-#   Normalized = as.numeric(
-#     counts(dds, normalized = TRUE)["IDO1", samples]
-#   )
-# )
-# 
-# print(ido1_QC)
+ggsave("Volcano_Nellore_Blood.pdf",plot = volcano_plot_Nellore,width = 10,height = 7)
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -334,21 +264,33 @@ ggplot(ido1_pairs, aes(x = EXP, y = POST)) +
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-heatmap_significant_df <- padjusted_results_nellore_blood_dds_df
-pca_significant_df <- padjusted_results_nellore_blood_dds_df
+heatmap_significant_df <- padjusted_results_Nellore_blood_dds_df
+pca_significant_df <- padjusted_results_Nellore_blood_dds_df
 
 # Heatmap:
 
 gene_names_significant <- rownames(heatmap_significant_df)
-normalized_matrix_count <- counts(nellore_blood_dds_deseq, normalized = TRUE)
-heatmap_matrix_normalized_sig <- log2(normalized_matrix_count[gene_names_significant,] + 1)
+normalized_matrix_count <- counts(Nellore_blood_dds_deseq, normalized = TRUE)
+gene_sd <- apply(normalized_matrix_count, 1,sd)
+gene_sd_significant <- gene_sd[names(gene_sd) %in% rownames(padjusted_results_Nellore_blood_dds_df)]
+gene_sd_significant <- sort(gene_sd_significant, decreasing = TRUE)
+
+heatmap_matrix_normalized_sig <- log2(
+  normalized_matrix_count[names(gene_sd_significant), , drop = FALSE] + 1
+)
 
 metadata_heatmap <- metadata[colnames(heatmap_matrix_normalized_sig), , drop = FALSE]
-metadata_heatmap$Treatment <- factor(metadata_heatmap$Treatment,levels = c("EXP", "POST"))
+metadata_heatmap$Treatment <- factor(
+  metadata_heatmap$Treatment,
+  levels = c("EXP", "POST"))
 
-annotation_col <- metadata_heatmap[, c("Treatment"), drop = FALSE]
-groups <- as.character(metadata_heatmap$Treatment)
-gaps <- head(cumsum(rle(groups)$lengths), 1)
+sample_order <- with(metadata_heatmap, order(Treatment, IID))
+metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
+
+heatmap_matrix_normalized_sig <- heatmap_matrix_normalized_sig[, rownames(metadata_heatmap), drop = FALSE]
+annotation_col <- metadata_heatmap[, "Treatment", drop = FALSE]
+gaps <- sum(metadata_heatmap$Treatment == "EXP")
+
 
 plot_deg_ordered <- pheatmap(
   heatmap_matrix_normalized_sig,
@@ -367,7 +309,7 @@ plot_deg_ordered <- pheatmap(
   fontsize_row = 7,
   fontsize_col = 8,
   angle_col = 90,
-  main = "nellore Blood - Significant DEGs (EXP vs POST)"
+  main = "Nellore Blood - Significant DEGs (EXP vs POST)"
 )
 
 plot_deg_clustered <- pheatmap(
@@ -387,36 +329,37 @@ plot_deg_clustered <- pheatmap(
   fontsize_row = 7,
   fontsize_col = 8,
   angle_col = 90,
-  main = "nellore Blood - Significant DEGs (Clustered)"
+  main = "Nellore Blood - Significant DEGs (Clustered)"
 )
 
-heatmap_plots <- list("nellore_DEG_Ordered.pdf" = plot_deg_ordered, "nellore_DEG_Clustered.pdf" = plot_deg_clustered)
+heatmap_plots <- list("Nellore_DEG_Ordered.pdf" = plot_deg_ordered, "Nellore_DEG_Clustered.pdf" = plot_deg_clustered)
 for (filename in names(heatmap_plots)) {
   ggsave(filename, plot = heatmap_plots[[filename]]$gtable, width = 11, height = 8)
 }
+
 
 
 # PCA:
 
 label_size <- 3.5
 
-pca_significant_df <- padjusted_results_nellore_blood_dds_df
+pca_significant_df <- padjusted_results_Nellore_blood_dds_df
 gene_names_significant <- rownames(heatmap_significant_df)
-normalized_matrix_count <- counts(nellore_blood_dds_deseq, normalized = TRUE)
+normalized_matrix_count <- counts(Nellore_blood_dds_deseq, normalized = TRUE)
 pca_matrix_normalized_sig <- log2(normalized_matrix_count[gene_names_significant,] + 1)
 
 t_pca_matrix_deg <- t(pca_matrix_normalized_sig)
-pca_nellore_deg <- prcomp(t_pca_matrix_deg, center = T, scale. = F)
+pca_Nellore_deg <- prcomp(t_pca_matrix_deg, center = T, scale. = F)
 
 metadata_pca <- metadata[rownames(t_pca_matrix_deg), , drop = FALSE]
-pca_df <- cbind(as.data.frame(pca_nellore_deg$x[, 1:4, drop = FALSE]), metadata_pca)
+pca_df <- cbind(as.data.frame(pca_Nellore_deg$x[, 1:4, drop = FALSE]), metadata_pca)
 pca_df$Treatment <- factor(pca_df$Treatment,levels = c("EXP", "POST"))
 pca_df$IID <- factor(pca_df$IID)
 animal_shapes <- setNames(c(16, 17, 15, 18, 3, 4, 7, 8),levels(pca_df$IID))
 
 treatment_colors <- c("EXP" = "#0072B2","POST" = "#D55E00")
 
-variance_explained <- 100 * pca_nellore_deg$sdev^2 / sum(pca_nellore_deg$sdev^2)
+variance_explained <- 100 * pca_Nellore_deg$sdev^2 / sum(pca_Nellore_deg$sdev^2)
 
 variance_df <- data.frame(PC = factor(paste0("PC", seq_along(variance_explained)),levels = paste0("PC", seq_along(variance_explained))),
                           Variance = variance_explained)
@@ -442,8 +385,8 @@ plot_pca_deg <- function(pc_x, pc_y) {
     scale_color_manual(values = treatment_colors) +
     scale_shape_manual(values = animal_shapes) +
     labs(
-      title = "PCA - nellore Blood (Significant DEGs)",
-      subtitle = "FDR < 0.1 | Absolute log2FC >= 0.58",
+      title = "PCA - Nellore Blood (Significant DEGs)",
+      subtitle = "FDR < 0.05 | Absolute log2FC >= 1",
       x = paste0(
         pc_x, " (",
         round(variance_explained[
@@ -472,8 +415,8 @@ plot_pca_deg <- function(pc_x, pc_y) {
 pca_plot_12 <- plot_pca_deg("PC1", "PC2"); pca_plot_12
 pca_plot_34 <- plot_pca_deg("PC3", "PC4"); pca_plot_34
 
-ggsave("PCA_nellore_DEGs_PC1_PC2.pdf", pca_plot_12,width = 11, height = 8)
-ggsave("PCA_nellore_DEGs_PC3_PC4.pdf", pca_plot_34,width = 11, height = 8)
+ggsave("PCA_Nellore_DEGs_PC1_PC2.pdf", pca_plot_12,width = 11, height = 8)
+ggsave("PCA_Nellore_DEGs_PC3_PC4.pdf", pca_plot_34,width = 11, height = 8)
 
 
 variance_plot <- ggplot(
@@ -490,7 +433,7 @@ variance_plot <- ggplot(
     expand = expansion(mult = c(0, 0.12))
   ) +
   labs(
-    title = "Explained Variance - nellore Significant DEGs",
+    title = "Explained Variance - Nellore Significant DEGs",
     x = "Principal Components",
     y = "Variance Explained (%)"
   ) +
@@ -501,4 +444,14 @@ variance_plot <- ggplot(
   )
 
 print(variance_plot)
-ggsave("PCA_nellore_variance.pdf", variance_plot,width = 11, height = 8)
+ggsave("PCA_Nellore_variance.pdf", variance_plot,width = 11, height = 8)
+
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"Heatmap plotting and PCA plotting of the Significant Markers - FC 1 & FDR < 0.05"
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+write.table(padjusted_results_Nellore_blood_dds_df, "significant_blood_Nellore_genes.txt", quote = F, sep = "\t", row.names = T)
+write.table(results_Nellore_blood_dds_df, "results_df_blood_Nellore_genes.txt", quote = F, sep = "\t", row.names = T)
