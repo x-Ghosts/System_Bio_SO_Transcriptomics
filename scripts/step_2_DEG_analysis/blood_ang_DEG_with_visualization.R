@@ -1,5 +1,6 @@
 setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_2_DEG_analysis/blood/")
 
+
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -96,6 +97,7 @@ low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percen
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
 nrow(filtered_matrix_counts) #17523 
 
+
 # Metadata preparation
 
 sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", angus_samples_ids_names, proto = list(
@@ -154,13 +156,15 @@ angus_blood_dds$Treatment <- relevel(angus_blood_dds$Treatment, ref = "POST") # 
 "DEG analysis"
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
-FDR <- 0.1
+FDR <- 0.05
 
 angus_blood_dds_deseq <- DESeq(angus_blood_dds, parallel = TRUE) # 17523
 results_angus_blood_dds <- results(angus_blood_dds_deseq)
 results_angus_blood_dds_df <- as.data.frame(results_angus_blood_dds)
 
 padjusted_results_angus_blood_dds_df <- results_angus_blood_dds_df[!is.na(results_angus_blood_dds_df$padj),,drop = FALSE] # 11068
+names_to_test <- rownames(padjusted_results_angus_blood_dds_df)
+test_matrix <- filtered_matrix_counts[rownames(filtered_matrix_counts) %in% names_to_test,]
 padjusted_results_angus_blood_dds_df <- padjusted_results_angus_blood_dds_df[padjusted_results_angus_blood_dds_df$padj < FDR,] # 43
 
 ######################################################################################################################################################################################
@@ -203,6 +207,53 @@ status_colors <- c(
   "Not significant" = "grey75"
 )
 status_colors["UP in EXP"] <- "#D73027"
+
+
+volcano_plot_angus <- ggplot(
+  volcano_df,
+  aes(x = log2FoldChange, y = neglog10padj)
+) +
+  geom_point(
+    aes(color = status),
+    alpha = 0.65,
+    size = 1.5
+  ) +
+  
+  scale_color_manual(
+    values = status_colors,
+    drop = FALSE
+  ) +
+  geom_vline(
+    xintercept = c(-lfc_cutoff, lfc_cutoff),
+    linetype = "dashed",
+    color = "grey40"
+  ) +
+  geom_hline(
+    yintercept = -log10(fdr_cutoff),
+    linetype = "dashed",
+    color = "grey40"
+  ) +
+  geom_text_repel(
+    data = volcano_labels,
+    aes(label = gene),
+    size = 3,
+    max.overlaps = Inf
+  ) +
+  labs(
+    title = "Volcano Plot - Angus Blood",
+    subtitle = "EXP vs POST | DESeq2",
+    x = "log2FoldChange (EXP vs POST)",
+    y = "-log10(adjusted p-value)",
+    color = "Gene classification"
+  ) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+
+print(volcano_plot_angus)
+
 
 volcano_plot_angus <- ggplot(
   volcano_df,
@@ -341,14 +392,18 @@ pca_significant_df <- padjusted_results_angus_blood_dds_df
 
 gene_names_significant <- rownames(heatmap_significant_df)
 normalized_matrix_count <- counts(angus_blood_dds_deseq, normalized = TRUE)
-heatmap_matrix_normalized_sig <- log2(normalized_matrix_count[gene_names_significant,] + 1)
+gene_sd <- apply(normalized_matrix_count, 1,sd)
+gene_sd_significant <- gene_sd[names(gene_sd) %in% rownames(padjusted_results_angus_blood_dds_df)]
+gene_sd_significant <- sort(gene_names_significant, decreasing = T)
 
+heatmap_matrix_normalized_sig <- log2(normalized_matrix_count[gene_sd_significant,] + 1)
 metadata_heatmap <- metadata[colnames(heatmap_matrix_normalized_sig), , drop = FALSE]
 metadata_heatmap$Treatment <- factor(metadata_heatmap$Treatment,levels = c("EXP", "POST"))
 
 annotation_col <- metadata_heatmap[, c("Treatment"), drop = FALSE]
 groups <- as.character(metadata_heatmap$Treatment)
 gaps <- head(cumsum(rle(groups)$lengths), 1)
+
 
 plot_deg_ordered <- pheatmap(
   heatmap_matrix_normalized_sig,
@@ -502,3 +557,13 @@ variance_plot <- ggplot(
 
 print(variance_plot)
 ggsave("PCA_Angus_variance.pdf", variance_plot,width = 11, height = 8)
+
+
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+"Heatmap plotting and PCA plotting of the Significant Markers - FC 1 & FDR < 0.05"
+######################################################################################################################################################################################
+######################################################################################################################################################################################
+
+write.table(padjusted_results_angus_blood_dds_df, "significant_blood_angus_genes.txt", quote = F, sep = "\t", row.names = T)
+write.table(results_angus_blood_dds_df, "results_df_blood_angus_genes.txt", quote = F, sep = "\t", row.names = T)
