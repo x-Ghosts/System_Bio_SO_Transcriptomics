@@ -157,6 +157,7 @@ angus_blood_dds$Treatment <- relevel(angus_blood_dds$Treatment, ref = "POST") # 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 FDR <- 0.05
+lfc <- 1
 
 angus_blood_dds_deseq <- DESeq(angus_blood_dds, parallel = TRUE) # 17523
 results_angus_blood_dds <- results(angus_blood_dds_deseq)
@@ -165,7 +166,8 @@ results_angus_blood_dds_df <- as.data.frame(results_angus_blood_dds)
 padjusted_results_angus_blood_dds_df <- results_angus_blood_dds_df[!is.na(results_angus_blood_dds_df$padj),,drop = FALSE] # 11068
 names_to_test <- rownames(padjusted_results_angus_blood_dds_df)
 test_matrix <- filtered_matrix_counts[rownames(filtered_matrix_counts) %in% names_to_test,]
-padjusted_results_angus_blood_dds_df <- padjusted_results_angus_blood_dds_df[padjusted_results_angus_blood_dds_df$padj < FDR,] # 43
+padjusted_results_angus_blood_dds_df <- padjusted_results_angus_blood_dds_df[padjusted_results_angus_blood_dds_df$padj < FDR & 
+                                                                               abs(padjusted_results_angus_blood_dds_df$log2FoldChange) > lfc,] # 43
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -243,51 +245,6 @@ volcano_plot_angus <- ggplot(
     title = "Volcano Plot - Angus Blood",
     subtitle = "EXP vs POST | DESeq2",
     x = "log2FoldChange (EXP vs POST)",
-    y = "-log10(adjusted p-value)",
-    color = "Gene classification"
-  ) +
-  theme_classic(base_size = 13) +
-  theme(
-    plot.title = element_text(face = "bold"),
-    legend.position = "right"
-  )
-
-print(volcano_plot_angus)
-
-
-volcano_plot_angus <- ggplot(
-  volcano_df,
-  aes(x = log2FoldChange, y = neglog10padj)
-) +
-  geom_point(
-    aes(color = status),
-    alpha = 0.65,
-    size = 1.5
-  ) +
-  scale_color_manual(
-    values = status_colors,
-    drop = FALSE
-  ) +
-  geom_vline(
-    xintercept = c(-lfc_cutoff, lfc_cutoff),
-    linetype = "dashed",
-    color = "grey40"
-  ) +
-  geom_hline(
-    yintercept = -log10(fdr_cutoff),
-    linetype = "dashed",
-    color = "grey40"
-  ) +
-  geom_text_repel(
-    data = volcano_labels,
-    aes(label = gene),
-    size = 3,
-    max.overlaps = Inf
-  ) +
-  labs(
-    title = "Volcano Plot - Angus Blood",
-    subtitle = paste("EXP vs POST | DESeq2"),
-    x = paste0("log2FoldChange ( EXP vs POST)"),
     y = "-log10(adjusted p-value)",
     color = "Gene classification"
   ) +
@@ -394,15 +351,23 @@ gene_names_significant <- rownames(heatmap_significant_df)
 normalized_matrix_count <- counts(angus_blood_dds_deseq, normalized = TRUE)
 gene_sd <- apply(normalized_matrix_count, 1,sd)
 gene_sd_significant <- gene_sd[names(gene_sd) %in% rownames(padjusted_results_angus_blood_dds_df)]
-gene_sd_significant <- sort(gene_names_significant, decreasing = T)
+gene_sd_significant <- sort(gene_sd_significant, decreasing = TRUE)
 
-heatmap_matrix_normalized_sig <- log2(normalized_matrix_count[gene_sd_significant,] + 1)
+heatmap_matrix_normalized_sig <- log2(
+  normalized_matrix_count[names(gene_sd_significant), , drop = FALSE] + 1
+)
+
 metadata_heatmap <- metadata[colnames(heatmap_matrix_normalized_sig), , drop = FALSE]
-metadata_heatmap$Treatment <- factor(metadata_heatmap$Treatment,levels = c("EXP", "POST"))
+metadata_heatmap$Treatment <- factor(
+  metadata_heatmap$Treatment,
+  levels = c("EXP", "POST"))
 
-annotation_col <- metadata_heatmap[, c("Treatment"), drop = FALSE]
-groups <- as.character(metadata_heatmap$Treatment)
-gaps <- head(cumsum(rle(groups)$lengths), 1)
+sample_order <- with(metadata_heatmap, order(Treatment, IID))
+metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
+
+heatmap_matrix_normalized_sig <- heatmap_matrix_normalized_sig[, rownames(metadata_heatmap), drop = FALSE]
+annotation_col <- metadata_heatmap[, "Treatment", drop = FALSE]
+gaps <- sum(metadata_heatmap$Treatment == "EXP")
 
 
 plot_deg_ordered <- pheatmap(
@@ -449,6 +414,7 @@ heatmap_plots <- list("Angus_DEG_Ordered.pdf" = plot_deg_ordered, "Angus_DEG_Clu
 for (filename in names(heatmap_plots)) {
   ggsave(filename, plot = heatmap_plots[[filename]]$gtable, width = 11, height = 8)
 }
+
 
 
 # PCA:
