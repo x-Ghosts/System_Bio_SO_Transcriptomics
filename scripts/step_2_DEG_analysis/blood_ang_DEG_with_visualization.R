@@ -498,7 +498,7 @@ plot_pca_deg <- function(pc_x, pc_y) {
     scale_shape_manual(values = animal_shapes) +
     labs(
       title = "PCA - Angus Blood (Significant DEGs)",
-      subtitle = "FDR < 0.1 | Absolute log2FC >= 0.58",
+      subtitle = "FDR < 0.05 | Absolute log2FC >= 1",
       x = paste0(
         pc_x, " (",
         round(variance_explained[
