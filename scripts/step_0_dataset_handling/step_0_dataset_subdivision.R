@@ -1,5 +1,7 @@
 setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_0_dataset_subdivision/")
 
+X_data <- read.delim("transcript_count_blood/transcripts_liver_angus.txt")
+
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -72,9 +74,19 @@ gene_count_liver_nellore <- gene[,c("gene_id", "gene_name", colnames(gene)[liver
 stress_blood_cols <- grepl("^RNA_B_.*_D4$", colnames(gene))
 gene_count_stress_only_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_blood_cols])]
 
+# Non Stressed Nellore & Stressed Angus together "BLOOD"
+no_stress_blood_cols <- grepl("^RNA_B_.*_POST$", colnames(gene))
+gene_count_no_stress_only_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[no_stress_blood_cols])]
+
+
 # Stressed Nellore & Stressed Angus together "LIVER"
 stress_liver_cols <- grepl("^RNA_L_.*_D4$", colnames(gene))
 gene_count_stress_only_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_liver_cols])]
+
+
+# Non Stressed Nellore & Stressed Angus together "LIVER"
+no_stress_liver_cols <- grepl("^RNA_L_.*_POST$", colnames(gene))
+gene_count_no_stress_only_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[no_stress_liver_cols])]
 
 
 write.table(gene_count_blood, "gene_count_blood_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
@@ -85,6 +97,8 @@ write.table(gene_count_liver_angus, "gene_count_liver/gene_count_liver_angus.txt
 write.table(gene_count_liver_nellore, "gene_count_liver/gene_count_liver_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(gene_count_stress_only_blood, "gene_count_blood/gene_count_blood_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(gene_count_stress_only_liver, "gene_count_liver/gene_count_liver_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(gene_count_no_stress_only_blood, "gene_count_blood/gene_count_blood_ang_nell_NOstress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(gene_count_no_stress_only_liver, "gene_count_liver/gene_count_liver_ang_nell_NOstress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 
 
 #########################################################################################################################################################################
@@ -121,9 +135,18 @@ transcripts_liver_nellore <- transcripts[,c("tx", "gene_id", colnames(transcript
 stress_blood_cols <- grepl("^RNA_B_.*_D4$", colnames(transcripts))
 transcripts_stress_only_blood <- transcripts[,c("tx", "gene_id", colnames(transcripts)[stress_blood_cols])]
 
+# Non Stressed Nellore & Stressed Angus together "BLOOD"
+no_stress_blood_cols <- grepl("^RNA_B_.*_POST$", colnames(transcripts))
+transcripts_no_stress_only_blood <- transcripts[,c("tx", "gene_id", colnames(transcripts)[no_stress_blood_cols])]
+
+
 # Stressed Nellore & Stressed Angus together "LIVER"
 stress_liver_cols <- grepl("^RNA_L_.*_D4$", colnames(transcripts))
 transcripts_stress_only_liver <- transcripts[,c("tx", "gene_id", colnames(transcripts)[stress_liver_cols])]
+
+# Non Stressed Nellore & Stressed Angus together "LIVER"
+no_stress_liver_cols <- grepl("^RNA_L_.*_POST$", colnames(transcripts))
+transcripts_no_stress_only_liver <- transcripts[,c("tx", "gene_id", colnames(transcripts)[no_stress_liver_cols])]
 
 
 
@@ -135,3 +158,6 @@ write.table(transcripts_liver_angus, "transcript_count_liver/transcripts_liver_a
 write.table(transcripts_liver_nellore, "transcript_count_liver/transcripts_liver_nellore.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_stress_only_blood, "transcript_count_blood/transcripts_blood_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_stress_only_liver, "transcript_count_liver/transcripts_liver_ang_nell_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(transcripts_no_stress_only_blood, "transcript_count_blood/transcripts_blood_ang_nell_NO_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+write.table(transcripts_no_stress_only_liver, "transcript_count_liver/transcripts_liver_ang_nell_NO_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
+
