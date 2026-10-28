@@ -183,7 +183,7 @@ lfc_cutoff <- 1 #0.58
 n_labels <- 35
 
 resultsNames(stress_blood_dds_deseq)
-coef_name <- "Breed_A_vs_N" # The statistical comparison of the Design Model ~ IID + Treatment
+coef_name <- "Breed_A_vs_N" # The statistical comparison of the Design Model ~ Breed
 
 res_stress <- results(stress_blood_dds_deseq, name = coef_name, alpha = fdr_cutoff)
 res_stress_shrunk <- lfcShrink(stress_blood_dds_deseq, coef = coef_name, res = res_stress, type = "apeglm")
