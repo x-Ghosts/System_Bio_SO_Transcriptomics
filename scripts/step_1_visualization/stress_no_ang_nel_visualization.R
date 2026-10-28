@@ -37,13 +37,13 @@ library(pheatmap)
 # Original gene-count matrix - Annotation set
 # ============================================================
 
-gene_count_nostress_blood <- read.table("gene_count_blood/gene_count_blood_ang_nell_NOstress.txt", header = T, sep = "\t", stringsAsFactors = F)
-nostress_samples_ids<- grepl("^RNA_B_[AN]", colnames(gene_count_nostress_blood))
-nostress_samples_ids_names <- colnames(gene_count_nostress_blood[,-c(1,2)])
-gene_names <- gene_count_nostress_blood[,1:2] 
+gene_count_NOstress_blood <- read.delim("gene_count_blood/gene_count_blood_ang_nell_NOstress.txt", header = T, stringsAsFactors = F)
+NOstress_samples_ids<- grepl("^RNA_B_[AN]", colnames(gene_count_NOstress_blood))
+NOstress_samples_ids_names <- colnames(gene_count_NOstress_blood[,-c(1,2)])
+gene_names <- gene_count_NOstress_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
-matrix_counts <- gene_count_nostress_blood[, nostress_samples_ids]
+matrix_counts <- gene_count_NOstress_blood[, NOstress_samples_ids]
 matrix_counts <- as.matrix(matrix_counts, drop=FALSE)
 rownames(matrix_counts) <- gene_names$gene_id
 
@@ -91,13 +91,13 @@ percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene
 num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
 percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14899
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #15055
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #17193 
+nrow(filtered_matrix_counts) #17037 
 
 # Metadata preparation
 
-sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", nostress_samples_ids_names, proto = list(
+sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", NOstress_samples_ids_names, proto = list(
   BreedCode = character(),
   AnimalNumber = character(),
   Treatment = character()
@@ -105,7 +105,7 @@ sample_info <- strcapture("^RNA_B_([AN])([0-9]+)_([^_]+)$", nostress_samples_ids
 )
 
 metadata <- data.frame(
-  SampleID = nostress_samples_ids_names,
+  SampleID = NOstress_samples_ids_names,
   IID = paste0(sample_info$BreedCode, sample_info$AnimalNumber),
   Treatment = sample_info$Treatment,
   Breed = sample_info$BreedCode,
@@ -144,12 +144,12 @@ metadata$Breed <- factor(metadata$Breed, levels = c("A","N"))
 # ============================================================
 
 # DDS Objects:
-nostress_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
+NOstress_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
                                            colData = metadata,
                                            design = ~ Breed
 )
 
-nostress_blood_dds$Treatment <- relevel(nostress_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
+NOstress_blood_dds$Treatment <- relevel(NOstress_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -157,28 +157,28 @@ nostress_blood_dds$Treatment <- relevel(nostress_blood_dds$Treatment, ref = "POS
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-nostress_blood_dds_deseq <- DESeq(nostress_blood_dds, parallel = TRUE) 
-results_nostress_blood_dds <- results(nostress_blood_dds_deseq)
-results_nostress_blood_dds_df <- as.data.frame(results_nostress_blood_dds)
+NOstress_blood_dds_deseq <- DESeq(NOstress_blood_dds, parallel = TRUE) 
+results_NOstress_blood_dds <- results(NOstress_blood_dds_deseq)
+results_NOstress_blood_dds_df <- as.data.frame(results_NOstress_blood_dds)
 
 boxplot(
-  log10(assays(nostress_blood_dds_deseq)[["cooks"]]),
+  log10(assays(NOstress_blood_dds_deseq)[["cooks"]]),
   range = 0,
   las = 2,
-  main = "Cook's Distance - nostress Blood",
+  main = "Cook's Distance - NOstress Blood",
   ylab = "log10(Cook's Distance)"
 )
 
 #####################################################################
-# PCA Analysis - Angus vs Nellore (nostress Blood)
+# PCA Analysis - Angus vs Nellore (NOstress Blood)
 #####################################################################
 
 label_size <- 3.5
 
 # Variance Stabilizing Transformation
-vst_nostress_blood_dds <- vst(nostress_blood_dds, blind = T)
+vst_NOstress_blood_dds <- vst(NOstress_blood_dds, blind = T)
 
-t_filtered_matrix_counts <- t(assay(vst_nostress_blood_dds))
+t_filtered_matrix_counts <- t(assay(vst_NOstress_blood_dds))
 
 metadata_pca <- metadata[
   rownames(t_filtered_matrix_counts), , drop = FALSE
@@ -195,7 +195,7 @@ stopifnot(
 )
 
 # Computing Principal Components
-pca_nostress_blood_dds <- prcomp(
+pca_NOstress_blood_dds <- prcomp(
   t_filtered_matrix_counts,
   scale. = FALSE,
   center = TRUE
@@ -203,8 +203,8 @@ pca_nostress_blood_dds <- prcomp(
 
 # PCA scores + metadata
 pca_df <- cbind(
-  as.data.frame(pca_nostress_blood_dds$x[
-    , 1:nrow(pca_nostress_blood_dds$x), drop = FALSE
+  as.data.frame(pca_NOstress_blood_dds$x[
+    , 1:nrow(pca_NOstress_blood_dds$x), drop = FALSE
   ]),
   metadata_pca
 )
@@ -225,8 +225,8 @@ breed_colors <- c(
 
 # Percentage of variance explained
 variance_explained <- 100 *
-  pca_nostress_blood_dds$sdev^2 /
-  sum(pca_nostress_blood_dds$sdev^2)
+  pca_NOstress_blood_dds$sdev^2 /
+  sum(pca_NOstress_blood_dds$sdev^2)
 
 # Create variance-explained dataframe
 variance_df <- data.frame(
@@ -262,7 +262,7 @@ plot_pca <- function(pc_x, pc_y) {
     ) +
     scale_shape_manual(values = animal_shapes) +
     labs(
-      title = "PCA - nostress Blood (VST)",
+      title = "PCA - NOstress Blood (VST)",
       x = paste0(
         pc_x, " (",
         round(variance_explained[as.integer(sub("PC", "", pc_x))], 2),
@@ -292,8 +292,8 @@ pca_plot_34 <- plot_pca("PC3", "PC4")
 print(pca_plot_12)
 print(pca_plot_34)
 
-ggsave(filename = "PCA_nostress_blood_PC1_PC2.pdf",plot = pca_plot_12,width = 11,height = 8,units = "in")
-ggsave(filename = "PCA_nostress_blood_PC3_PC4.pdf",plot = pca_plot_34,width = 11,height = 8,units = "in")
+ggsave(filename = "PCA_NOstress_blood_PC1_PC2.pdf",plot = pca_plot_12,width = 11,height = 8,units = "in")
+ggsave(filename = "PCA_NOstress_blood_PC3_PC4.pdf",plot = pca_plot_34,width = 11,height = 8,units = "in")
 
 
 
@@ -312,7 +312,7 @@ variance_plot <- ggplot(
     expand = expansion(mult = c(0, 0.12))
   ) +
   labs(
-    title = "Explained Variance - nostress Blood",
+    title = "Explained Variance - NOstress Blood",
     x = "Principal Components",
     y = "Variance Explained (%)"
   ) +
@@ -325,7 +325,7 @@ variance_plot <- ggplot(
 print(variance_plot)
 
 ggsave(
-  filename = "PCA_variance_nostress_blood.pdf",
+  filename = "PCA_variance_NOstress_blood.pdf",
   plot = variance_plot,
   width = 10,
   height = 6,
@@ -340,26 +340,26 @@ ggsave(
 ######################################################################################################################################################################################
 
 ## Create QC dataframe, and we check for the CORR(PC1/2 vs Library SIZE)
-# if (is.null(sizeFactors(nostress_blood_dds))) {
-#   nostress_blood_dds <- estimateSizeFactors(nostress_blood_dds)
+# if (is.null(sizeFactors(NOstress_blood_dds))) {
+#   NOstress_blood_dds <- estimateSizeFactors(NOstress_blood_dds)
 # }
 # 
 # qc_samples <- data.frame(
-#          SampleID = colnames(nostress_blood_dds),
-#          LibrarySize = colSums(counts(nostress_blood_dds)),
-#          SizeFactor = sizeFactors(nostress_blood_dds))
+#          SampleID = colnames(NOstress_blood_dds),
+#          LibrarySize = colSums(counts(NOstress_blood_dds)),
+#          SizeFactor = sizeFactors(NOstress_blood_dds))
 # print(qc_samples)
 # 
-# pca_scores <- pca_nostress_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
+# pca_scores <- pca_NOstress_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
 # correlation_libsize_PC1 <- cor(pca_scores[,"PC1"], log10(qc_samples$LibrarySize)) # -0.18
 # correlation_libsize_PC2 <- cor(pca_scores[,"PC2"], log10(qc_samples$LibrarySize)) # -0.48
 # 
 # # SECOND CHECK for the A19 sample:
-# detected_genes <- colSums(counts(nostress_blood_dds) > 0)
+# detected_genes <- colSums(counts(NOstress_blood_dds) > 0)
 # qc_detected <- data.frame(
 #   SampleID = qc_samples$SampleID,
 #   Detected_Genes = detected_genes[qc_samples$SampleID],
-#   PC2 = pca_nostress_blood_dds$x[qc_samples$SampleID, "PC2"]
+#   PC2 = pca_NOstress_blood_dds$x[qc_samples$SampleID, "PC2"]
 # )
 # 
 # qc_detected$A19 <- grepl("_A19_", qc_detected$SampleID)
@@ -385,26 +385,30 @@ ggsave(
 ######################################################################################################################################################################################
 
 # Extract the transformed matrix VST - The method removes the relationship between the mean & variance of count numbers
-vst_matrix <- assay(vst_nostress_blood_dds)
+vst_matrix <- assay(vst_NOstress_blood_dds)
 
 gene_sd <- apply(vst_matrix, 1, sd)
 gene_sd <- sort(gene_sd[is.finite(gene_sd) & gene_sd > 0], decreasing = TRUE)
 
 top_genes <- names(head(gene_sd, 1000))
 heatmap_matrix_top <- vst_matrix[top_genes, , drop = FALSE]
-
-all_genes <- names(gene_sd)
 heatmap_matrix <- vst_matrix[all_genes, , drop = FALSE]
+
 
 metadata_heatmap <- metadata[colnames(heatmap_matrix_top), , drop = FALSE]
 metadata_heatmap_all <- metadata[colnames(heatmap_matrix), , drop = FALSE]
+
+all_genes <- names(gene_sd)
+
+
+sample_order <- with(metadata_heatmap, order(Breed, IID))
+metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
 
 # Breed ordering
 metadata_heatmap$Breed <- factor(metadata_heatmap$Breed, levels = c("A", "N"))
 metadata_heatmap_all$Breed <- factor(metadata_heatmap_all$Breed, levels = c("A", "N"))
 
-sample_order <- with(metadata_heatmap, order(Breed, IID))
-metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
+
 
 sample_order_all <- with(metadata_heatmap_all, order(Breed, IID))
 metadata_heatmap_all <- metadata_heatmap_all[sample_order_all, , drop = FALSE]
