@@ -1,6 +1,6 @@
 setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_0_dataset_subdivision/")
 
-X_data <- read.delim("transcript_count_blood/transcripts_liver_angus.txt")
+#X_data <- read.delim("transcript_count_blood/transcripts_liver_angus.txt")
 
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
@@ -31,8 +31,8 @@ library(sva)
 
 # Loading datasets:
 
-transcripts <- read.csv("transcript_count_rnaseq.csv", header = T, stringsAsFactors = F, sep = ";")
-gene <- read.csv("gene_count_rnaseq.csv", header = T, stringsAsFactors = F, sep = ";")
+transcripts <- read.delim("transcript_counts_S.tsv", header = T, stringsAsFactors = F)
+gene <- read.delim("gene_counts_S.tsv", header = T, stringsAsFactors = F)
 
 #########################################################################################################################################################################
 #########################################################################################################################################################################
