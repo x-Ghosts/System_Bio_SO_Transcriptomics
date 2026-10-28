@@ -27,6 +27,9 @@ library(ggrepel)
 library(ggfortify) #install.packages("ggfortify")
 library(stats)
 library(sva)
+library(tidyr)
+library(stringr)
+library(patchwork)
 
 
 # Loading datasets:
@@ -161,3 +164,95 @@ write.table(transcripts_stress_only_liver, "transcript_count_liver/transcripts_l
 write.table(transcripts_no_stress_only_blood, "transcript_count_blood/transcripts_blood_ang_nell_NO_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 write.table(transcripts_no_stress_only_liver, "transcript_count_liver/transcripts_liver_ang_nell_NO_stress.txt", quote = F, sep = "\t", row.names = F, col.names = T)
 
+#########################################################################################################################################################################
+#########################################################################################################################################################################
+# RNA material quality
+##########################################################################################################################################################################
+#########################################################################################################################################################################
+
+blood <- read.delim("RNA_blood.csv", header = T, stringsAsFactors = F)
+liver <- read.delim("RNA_liver.csv", header = T, stringsAsFactors = F)
+muscle <- read.delim("RNA_Muscle.csv", header = T, stringsAsFactors = F)
+skin <- read.delim("RNA_Skin.csv", header = T, stringsAsFactors = F)
+
+
+all_animals <- blood %>%
+  mutate(
+    Sample = str_squish(as.character(Sample)),
+    Animal = sub("\\s+(D4|POST)$", "", Sample)
+  ) %>%
+  pull(Animal) %>%
+  unique()
+
+plot_RIN <- function(df, tissue_name) {
+  
+  # Extract animal and treatment
+  rin_df <- df %>%
+    mutate(
+      Sample = str_squish(as.character(Sample)),
+      Animal = sub("\\s+(D4|POST)$", "", Sample),
+      Period = sub("^.*\\s+(D4|POST)$", "\\1", Sample),
+      RIN = suppressWarnings(as.numeric(as.character(RIN)))
+    ) %>%
+    select(Animal, Period, RIN)
+  
+  # Include ALL animals and BOTH periods
+  rin_complete <- expand_grid(
+    Animal = all_animals,
+    Period = c("D4", "POST")
+  ) %>%
+    left_join(rin_df, by = c("Animal", "Period")) %>%
+    mutate(
+      Animal = factor(Animal, levels = all_animals),
+      Period = factor(Period, levels = c("D4", "POST")),
+      Missing = is.na(RIN),
+      Bar_RIN = coalesce(RIN, 0),
+      Label = if_else(Missing, "N/A", sprintf("%.1f", RIN)),
+      Label_Y = if_else(Missing, 0.4, Bar_RIN + 0.25)
+    )
+  
+  ggplot(rin_complete, aes(x = Animal, y = Bar_RIN, fill = Period)) +
+    geom_col(
+      position = position_dodge(width = 0.8),
+      width = 0.7,
+      color = "black"
+    ) +
+    geom_text(
+      aes(y = Label_Y, label = Label),
+      position = position_dodge(width = 0.8),
+      size = 3
+    ) +
+    scale_fill_manual(
+      values = c("D4" = "steelblue", "POST" = "tomato")
+    ) +
+    scale_y_continuous(
+      limits = c(0, 11),
+      breaks = seq(0, 10, 2)
+    ) +
+    labs(
+      title = paste("RIN Distribution -", tissue_name),
+      x = "Animal",
+      y = "RNA Integrity Number (RIN)",
+      fill = "Period"
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+}
+
+p1 <- plot_RIN(blood, "Blood")
+p2 <- plot_RIN(liver, "Liver")
+p3 <- plot_RIN(skin, "Skin")
+p4 <- plot_RIN(muscle, "Muscle")
+combined_RIN <- (p1 | p2) / (p3 | p4)
+
+# Display
+combined_RIN
+
+ggsave(filename = "RIN_All_Tissues.pdf",
+  plot = combined_RIN,
+  width = 20,
+  height = 12,
+  bg = "white"
+)
