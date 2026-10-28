@@ -37,7 +37,7 @@ library(pheatmap)
 # Original gene-count matrix - Annotation set
 # ============================================================
 
-gene_count_stress_blood <- read.table("gene_count_blood/gene_count_blood_ang_nell_stress.txt", header = T, sep = "\t", stringsAsFactors = F)
+gene_count_stress_blood <- read.delim("gene_count_blood/gene_count_blood_ang_nell_stress.txt", header = T, stringsAsFactors = F)
 stress_samples_ids<- grepl("^RNA_B_[AN]", colnames(gene_count_stress_blood))
 stress_samples_ids_names <- colnames(gene_count_stress_blood[,-c(1,2)])
 gene_names <- gene_count_stress_blood[,1:2] 
@@ -393,16 +393,20 @@ gene_sd <- sort(gene_sd[is.finite(gene_sd) & gene_sd > 0], decreasing = TRUE)
 top_genes <- names(head(gene_sd, 1000))
 heatmap_matrix_top <- vst_matrix[top_genes, , drop = FALSE]
 
+metadata_heatmap <- metadata[colnames(heatmap_matrix_top), , drop = FALSE]
+metadata_heatmap_all <- metadata[colnames(heatmap_matrix), , drop = FALSE]
+
 all_genes <- names(gene_sd)
 heatmap_matrix <- vst_matrix[all_genes, , drop = FALSE]
 
+sample_order <- with(metadata_heatmap, order(Breed, IID))
+metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
 
 # Breed ordering
 metadata_heatmap$Breed <- factor(metadata_heatmap$Breed, levels = c("A", "N"))
 metadata_heatmap_all$Breed <- factor(metadata_heatmap_all$Breed, levels = c("A", "N"))
 
-sample_order <- with(metadata_heatmap, order(Breed, IID))
-metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
+
 
 sample_order_all <- with(metadata_heatmap_all, order(Breed, IID))
 metadata_heatmap_all <- metadata_heatmap_all[sample_order_all, , drop = FALSE]
