@@ -39,7 +39,7 @@ library(pheatmap)
 
 gene_count_stress_blood <- read.delim("gene_count_blood/gene_count_blood_ang_nell_stress.txt", header = T, stringsAsFactors = F)
 stress_samples_ids<- grepl("^RNA_B_[AN]", colnames(gene_count_stress_blood))
-stress_samples_ids_names <- colnames(gene_count_stress_blood[,-c(1,2)])
+stress_samples_ids_names <- colnames(gene_count_stress_blood[,-c(1)])
 gene_names <- gene_count_stress_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
@@ -91,9 +91,9 @@ percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene
 num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
 percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14676
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14112
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #17416 
+nrow(filtered_matrix_counts) #17267 
 
 # Metadata preparation
 
@@ -392,12 +392,13 @@ gene_sd <- sort(gene_sd[is.finite(gene_sd) & gene_sd > 0], decreasing = TRUE)
 
 top_genes <- names(head(gene_sd, 1000))
 heatmap_matrix_top <- vst_matrix[top_genes, , drop = FALSE]
+heatmap_matrix <- vst_matrix[all_genes, , drop = FALSE]
+
 
 metadata_heatmap <- metadata[colnames(heatmap_matrix_top), , drop = FALSE]
 metadata_heatmap_all <- metadata[colnames(heatmap_matrix), , drop = FALSE]
 
 all_genes <- names(gene_sd)
-heatmap_matrix <- vst_matrix[all_genes, , drop = FALSE]
 
 sample_order <- with(metadata_heatmap, order(Breed, IID))
 metadata_heatmap <- metadata_heatmap[sample_order, , drop = FALSE]
@@ -503,3 +504,15 @@ heatmap_plots <- list(
 for (filename in names(heatmap_plots)) {
   ggsave(filename = filename, plot = heatmap_plots[[filename]]$gtable, width = 11,height = 8,units = "in")
 }
+
+# Save PCA scores, metadata and explained variance
+pca_results <- list(
+  pca_df = pca_df,
+  variance_explained = variance_explained,
+  pca_model = pca_stress_blood_dds
+)
+
+saveRDS(
+  pca_results,
+  "PCA_stress_Blood_Results.rds"
+)
