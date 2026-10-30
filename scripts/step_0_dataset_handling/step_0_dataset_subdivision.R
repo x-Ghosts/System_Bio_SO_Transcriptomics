@@ -34,9 +34,15 @@ library(patchwork)
 
 # Loading datasets:
 
-transcripts <- read.delim("transcript_counts_S.tsv", header = T, stringsAsFactors = F)
-gene <- read.delim("gene_counts_S.tsv", header = T, stringsAsFactors = F)
+# transcripts <- read.delim("transcript_counts_S.tsv", header = T, stringsAsFactors = F)
+# gene <- read.delim("gene_counts_S.tsv", header = T, stringsAsFactors = F)
 
+transcripts <- read.delim("STAR_Salmon_Transcript_Counts_Integer.tsv", header = T, stringsAsFactors = F)
+gene <- read.delim("STAR_Salmon_Gene_Counts_Integer.tsv", header = T, stringsAsFactors = F)
+
+colnames(transcripts)[1] <- "tx"
+colnames(transcripts)[2] <- "gene_id"
+colnames(gene)[1] <- "gene_id"
 #########################################################################################################################################################################
 #########################################################################################################################################################################
 # GENE COUNT
@@ -47,49 +53,49 @@ gene <- read.delim("gene_counts_S.tsv", header = T, stringsAsFactors = F)
 blood_cols <- grepl("^RNA_B_", colnames(gene))
 blood_cols_gene <- grepl("^RNA_B_", colnames(gene))
 transcripts_blood <- transcripts[,c("tx", "gene_id", colnames(transcripts)[blood_cols])]
-gene_count_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[blood_cols])]
+gene_count_blood <- gene[,c("gene_id",  colnames(gene)[blood_cols_gene])]
 
 # Liver only:
 liver_cols <- grepl("^RNA_L_", colnames(transcripts))
 liver_cols_gene <- grepl("^RNA_L_", colnames(gene))
-transcripts_liver <- transcripts[,c("tx", "gene_id", colnames(transcripts)[blood_cols])]
-gene_count_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[blood_cols])]
+transcripts_liver <- transcripts[,c("tx", "gene_id", colnames(transcripts)[liver_cols])]
+gene_count_liver <- gene[,c("gene_id", colnames(gene)[liver_cols_gene])]
 
 
 
 # Blood Angus:
 blood_ang_cols <- grepl("^RNA_B_A", colnames(gene))
-gene_count_blood_angus <- gene[,c("gene_id", "gene_name", colnames(gene)[blood_ang_cols])]
+gene_count_blood_angus <- gene[,c("gene_id",  colnames(gene)[blood_ang_cols])]
 
 # Blood Nellore:
 blood_nel_cols <- grepl("^RNA_B_N", colnames(gene))
-gene_count_blood_nellore <- gene[,c("gene_id", "gene_name", colnames(gene)[blood_nel_cols])]
+gene_count_blood_nellore <- gene[,c("gene_id",  colnames(gene)[blood_nel_cols])]
 
 # Liver Angus:
 liver_ang_cols <- grepl("^RNA_L_A", colnames(gene))
-gene_count_liver_angus <- gene[,c("gene_id", "gene_name", colnames(gene)[liver_ang_cols])]
+gene_count_liver_angus <- gene[,c("gene_id",  colnames(gene)[liver_ang_cols])]
 
 # Liver Nellore:
 liver_nel_cols <- grepl("^RNA_L_N", colnames(gene))
-gene_count_liver_nellore <- gene[,c("gene_id", "gene_name", colnames(gene)[liver_nel_cols])]
+gene_count_liver_nellore <- gene[,c("gene_id",  colnames(gene)[liver_nel_cols])]
 
 # Stressed Nellore & Stressed Angus together "BLOOD"
 stress_blood_cols <- grepl("^RNA_B_.*_D4$", colnames(gene))
-gene_count_stress_only_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_blood_cols])]
+gene_count_stress_only_blood <- gene[,c("gene_id",  colnames(gene)[stress_blood_cols])]
 
 # Non Stressed Nellore & Stressed Angus together "BLOOD"
 no_stress_blood_cols <- grepl("^RNA_B_.*_POST$", colnames(gene))
-gene_count_no_stress_only_blood <- gene[,c("gene_id", "gene_name", colnames(gene)[no_stress_blood_cols])]
+gene_count_no_stress_only_blood <- gene[,c("gene_id",  colnames(gene)[no_stress_blood_cols])]
 
 
 # Stressed Nellore & Stressed Angus together "LIVER"
 stress_liver_cols <- grepl("^RNA_L_.*_D4$", colnames(gene))
-gene_count_stress_only_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[stress_liver_cols])]
+gene_count_stress_only_liver <- gene[,c("gene_id",  colnames(gene)[stress_liver_cols])]
 
 
 # Non Stressed Nellore & Stressed Angus together "LIVER"
 no_stress_liver_cols <- grepl("^RNA_L_.*_POST$", colnames(gene))
-gene_count_no_stress_only_liver <- gene[,c("gene_id", "gene_name", colnames(gene)[no_stress_liver_cols])]
+gene_count_no_stress_only_liver <- gene[,c("gene_id",  colnames(gene)[no_stress_liver_cols])]
 
 
 write.table(gene_count_blood, "gene_count_blood_all_animals.txt", quote = F, sep = "\t", row.names = F, col.names = T)
@@ -170,10 +176,10 @@ write.table(transcripts_no_stress_only_liver, "transcript_count_liver/transcript
 ##########################################################################################################################################################################
 #########################################################################################################################################################################
 
-blood <- read.delim("RNA_blood.csv", header = T, stringsAsFactors = F)
-liver <- read.delim("RNA_liver.csv", header = T, stringsAsFactors = F)
-muscle <- read.delim("RNA_Muscle.csv", header = T, stringsAsFactors = F)
-skin <- read.delim("RNA_Skin.csv", header = T, stringsAsFactors = F)
+blood <- read.delim("Wetlab_RNA_quality$/RNA_blood.csv", header = T, stringsAsFactors = F)
+liver <- read.delim("Wetlab_RNA_quality$/RNA_liver.csv", header = T, stringsAsFactors = F)
+muscle <- read.delim("Wetlab_RNA_quality$/RNA_Muscle.csv", header = T, stringsAsFactors = F)
+skin <- read.delim("Wetlab_RNA_quality$/RNA_Skin.csv", header = T, stringsAsFactors = F)
 
 
 all_animals <- blood %>%
@@ -254,5 +260,92 @@ ggsave(filename = "RIN_All_Tissues.pdf",
   plot = combined_RIN,
   width = 20,
   height = 12,
+  bg = "white"
+)
+
+
+plot_ngul <- function(df, tissue_name) {
+  
+  # Extract animal and treatment
+  ngul_df <- df %>%
+    mutate(
+      Sample = str_squish(as.character(Sample)),
+      Animal = sub("\\s+(D4|POST)$", "", Sample),
+      Period = sub("^.*\\s+(D4|POST)$", "\\1", Sample),
+      ng.ul = suppressWarnings(as.numeric(as.character(ng.ul)))
+    ) %>%
+    select(Animal, Period, ng.ul)
+  
+  # Include ALL animals and BOTH periods
+  ngul_complete <- expand_grid(
+    Animal = all_animals,
+    Period = c("D4", "POST")
+  ) %>%
+    left_join(ngul_df, by = c("Animal", "Period")) %>%
+    mutate(
+      Animal = factor(Animal, levels = all_animals),
+      Period = factor(Period, levels = c("D4", "POST")),
+      Missing = is.na(ng.ul),
+      Bar_ngul = coalesce(ng.ul, 0),
+      Label = if_else(Missing, "N/A", sprintf("%.2f", ng.ul))
+    )
+  
+  # Dynamic label positioning
+  y_max <- max(ngul_complete$Bar_ngul, na.rm = TRUE)
+  offset <- max(y_max * 0.03, 0.05)
+  
+  ngul_complete <- ngul_complete %>%
+    mutate(
+      Label_Y = if_else(
+        Missing,
+        offset,
+        Bar_ngul + offset
+      )
+    )
+  
+  ggplot(ngul_complete, aes(x = Animal, y = Bar_ngul, fill = Period)) +
+    geom_col(
+      position = position_dodge(width = 0.8),
+      width = 0.7,
+      color = "black"
+    ) +
+    geom_text(
+      aes(y = Label_Y, label = Label),
+      position = position_dodge(width = 0.8),
+      size = 3
+    ) +
+    scale_fill_manual(
+      values = c("D4" = "steelblue", "POST" = "tomato")
+    ) +
+    scale_y_continuous(
+      expand = expansion(mult = c(0, 0.12))
+    ) +
+    labs(
+      title = paste("RNA Concentration -", tissue_name),
+      x = "Animal",
+      y = "RNA Concentration (ng/µL)",
+      fill = "Period"
+    ) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+}
+
+p1_ul <- plot_ngul(blood, "Blood")
+p2_ul  <- plot_ngul(liver, "Liver")
+p3_ul  <- plot_ngul(skin, "Skin")
+p4_ul  <- plot_ngul(muscle, "Muscle")
+
+combined_ngul <- (p1_ul  | p2_ul ) / (p3_ul  | p4_ul )
+
+combined_ngul
+
+ggsave(
+  filename = "RNA_Concentration_All_Tissues.pdf",
+  plot = combined_ngul,
+  width = 20,
+  height = 12,
+  units = "in",
   bg = "white"
 )
