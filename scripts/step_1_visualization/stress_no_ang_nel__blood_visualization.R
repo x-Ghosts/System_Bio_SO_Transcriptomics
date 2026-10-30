@@ -39,7 +39,7 @@ library(pheatmap)
 
 gene_count_NOstress_blood <- read.delim("gene_count_blood/gene_count_blood_ang_nell_NOstress.txt", header = T, stringsAsFactors = F)
 NOstress_samples_ids<- grepl("^RNA_B_[AN]", colnames(gene_count_NOstress_blood))
-NOstress_samples_ids_names <- colnames(gene_count_NOstress_blood[,-c(1,2)])
+NOstress_samples_ids_names <- colnames(gene_count_NOstress_blood[,-c(1)])
 gene_names <- gene_count_NOstress_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
@@ -91,9 +91,9 @@ percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene
 num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
 percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #15055
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14296
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #17037 
+nrow(filtered_matrix_counts) #18330 
 
 # Metadata preparation
 
@@ -505,3 +505,15 @@ heatmap_plots <- list(
 for (filename in names(heatmap_plots)) {
   ggsave(filename = filename, plot = heatmap_plots[[filename]]$gtable, width = 11,height = 8,units = "in")
 }
+
+# Save PCA scores, metadata and explained variance
+pca_results <- list(
+  pca_df = pca_df,
+  variance_explained = variance_explained,
+  pca_model = pca_NOstress_blood_dds
+)
+
+saveRDS(
+  pca_results,
+  "PCA_Nostress_Blood_Results.rds"
+)
