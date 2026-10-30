@@ -37,9 +37,9 @@ library(pheatmap)
 # Original gene-count matrix - Annotation set
 # ============================================================
 
-gene_count_nellore_blood <- read.table("gene_count_blood/gene_count_blood_nellore.txt", header = T, sep = "\t", stringsAsFactors = F)
+gene_count_nellore_blood <- read.delim("gene_count_blood/gene_count_blood_nellore.txt", header = T, sep = "\t", stringsAsFactors = F)
 nellore_samples_ids<- grepl("^RNA_B_N", colnames(gene_count_nellore_blood))
-nellore_samples_ids_names <- colnames(gene_count_nellore_blood[,-c(1,2)])
+nellore_samples_ids_names <- colnames(gene_count_nellore_blood[,-c(1)])
 gene_names <- gene_count_nellore_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
@@ -93,7 +93,7 @@ percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
 low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #15180
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #16912
+nrow(filtered_matrix_counts) #18072
 
 # Metadata preparation
 
@@ -478,3 +478,14 @@ heatmap_plots <- list(
 for (filename in names(heatmap_plots)) {
   ggsave(filename = filename, plot = heatmap_plots[[filename]]$gtable, width = 11,height = 8,units = "in")
 }
+
+pca_results <- list(
+  pca_df = pca_df,
+  variance_explained = variance_explained,
+  pca_model = pca_nellore_blood_dds
+)
+
+saveRDS(
+  pca_results,
+  "PCA_Nellore_Blood_Results.rds"
+)
