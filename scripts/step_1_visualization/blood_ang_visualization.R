@@ -1,4 +1,4 @@
-setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_visualization_PCA_Heatmap/liver/")
+setwd("/home/adam/Desktop/PhD_work_DATA_ANALYSIS_161026/PhD_work/Systems_Biology/SystemsBiology_Brasile/RNA_Seq/step_1_data_visualization_PCA_Heatmap/blood/")
 
 # Libraries :
 if (!require("BiocManager", quietly = TRUE))
@@ -37,13 +37,13 @@ library(pheatmap)
 # Original gene-count matrix - Annotation set
 # ============================================================
 
-gene_count_angus_liver <- read.table("gene_count_liver/gene_count_liver_angus.txt", header = T, sep = "\t", stringsAsFactors = F)
-angus_samples_ids<- grepl("^RNA_B_A", colnames(gene_count_angus_liver))
-angus_samples_ids_names <- colnames(gene_count_angus_liver[,-c(1,2)])
-gene_names <- gene_count_angus_liver[,1:2] 
+gene_count_angus_blood <- read.delim("gene_count_blood/gene_count_blood_angus.txt", header = T, sep = "\t", stringsAsFactors = F)
+angus_samples_ids<- grepl("^RNA_B_A", colnames(gene_count_angus_blood))
+angus_samples_ids_names <- colnames(gene_count_angus_blood[,-c(1)])
+gene_names <- gene_count_angus_blood[,1:2] 
 unique(isUnique(gene_names$gene_id)) # [1] TRUE, else FALSE
 
-matrix_counts <- gene_count_angus_liver[, angus_samples_ids]
+matrix_counts <- gene_count_angus_blood[, angus_samples_ids]
 matrix_counts <- as.matrix(matrix_counts, drop=FALSE)
 rownames(matrix_counts) <- gene_names$gene_id
 
@@ -91,9 +91,9 @@ percentage_low_sample <- 0.8 # It means I chose the threshold of removing a gene
 num_low_per_gene <- rowSums(matrix_counts <= low_count_threshold) # Using head(), a table is stdout to explain you each variable with its count of samples considered below the threshold.
 percentage_low_per_gene <- rowMeans(matrix_counts <= low_count_threshold) * 100
 
-low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #14569
+low_expression_genes <- rownames(matrix_counts)[percentage_low_per_gene > percentage_low_sample*100] #13787
 filtered_matrix_counts <- matrix_counts[!rownames(matrix_counts) %in% low_expression_genes,]
-nrow(filtered_matrix_counts) #17523 
+nrow(filtered_matrix_counts) #18839 
 
 # Metadata preparation
 
@@ -141,12 +141,12 @@ metadata$IID <- factor(metadata$IID)
 # ============================================================
 
 # DDS Objects:
-angus_liver_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
+angus_blood_dds <- DESeqDataSetFromMatrix(countData = filtered_matrix_counts,
                                           colData = metadata,
                                           design = ~ IID + Treatment
 )
 
-angus_liver_dds$Treatment <- relevel(angus_liver_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
+angus_blood_dds$Treatment <- relevel(angus_blood_dds$Treatment, ref = "POST") # Right of Volcano's are UP of HS, and left of Volcano's are UP of RECOVERY
 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
@@ -154,9 +154,9 @@ angus_liver_dds$Treatment <- relevel(angus_liver_dds$Treatment, ref = "POST") # 
 ######################################################################################################################################################################################
 ######################################################################################################################################################################################
 
-angus_liver_dds_deseq <- DESeq(angus_liver_dds, parallel = TRUE) 
-results_angus_liver_dds <- results(angus_liver_dds_deseq)
-results_angus_liver_dds_df <- as.data.frame(results_angus_liver_dds)
+angus_blood_dds_deseq <- DESeq(angus_blood_dds, parallel = TRUE) 
+results_angus_blood_dds <- results(angus_blood_dds_deseq)
+results_angus_blood_dds_df <- as.data.frame(results_angus_blood_dds)
 
 
 ######################################################################################################################################################################################
@@ -169,9 +169,9 @@ shape_column <- "Treatment"
 label_size <- 3.5
 
 # Variance Stabilizing Transformation
-vst_angus_liver_dds <- vst(angus_liver_dds, blind = TRUE)
+vst_angus_blood_dds <- vst(angus_blood_dds, blind = TRUE)
 
-t_filtered_matrix_counts <- t(assay(vst_angus_liver_dds))
+t_filtered_matrix_counts <- t(assay(vst_angus_blood_dds))
 
 metadata_pca <- metadata[
   rownames(t_filtered_matrix_counts), , drop = FALSE
@@ -188,10 +188,10 @@ stopifnot(
 
 
 # Computing Principal Components
-pca_angus_liver_dds <- prcomp(t_filtered_matrix_counts, scale. = FALSE, center = TRUE)
+pca_angus_blood_dds <- prcomp(t_filtered_matrix_counts, scale. = FALSE, center = TRUE)
 
 # PCA scores + metadata
-pca_df <- cbind(as.data.frame(pca_angus_liver_dds$x[, 1:nrow(pca_angus_liver_dds$x), drop = FALSE]),metadata_pca)
+pca_df <- cbind(as.data.frame(pca_angus_blood_dds$x[, 1:nrow(pca_angus_blood_dds$x), drop = FALSE]),metadata_pca)
 pca_df$Treatment <- factor(pca_df$Treatment)
 pca_df$IID <- factor(pca_df$IID)
 
@@ -201,8 +201,8 @@ treatment_colors <- c("EXP" = "#0072B2","POST" = "#D55E00")
 
 # Percentage of variance explained
 variance_explained <- 100 *
-  pca_angus_liver_dds$sdev^2 /
-  sum(pca_angus_liver_dds$sdev^2)
+  pca_angus_blood_dds$sdev^2 /
+  sum(pca_angus_blood_dds$sdev^2)
 
 # Create variance-explained dataframe
 variance_df <- data.frame(
@@ -235,7 +235,7 @@ plot_pca <- function(pc_x, pc_y) {
     scale_color_manual(values = treatment_colors) +
     scale_shape_manual(values = animal_shapes) +
     labs(
-      title = "PCA - Angus liver (VST)",
+      title = "PCA - Angus Blood (VST)",
       x = paste0(
         pc_x, " (",
         round(variance_explained[as.integer(sub("PC", "", pc_x))], 2),
@@ -265,8 +265,8 @@ pca_plot_34 <- plot_pca("PC3", "PC4")
 print(pca_plot_12)
 print(pca_plot_34)
 
-ggsave(filename = "PCA_angus_liver_PC1_PC2.pdf",plot = pca_plot_12,width = 11,height = 8,units = "in")
-ggsave(filename = "PCA_angus_liver_PC3_PC4.pdf",plot = pca_plot_34,width = 11,height = 8,units = "in")
+ggsave(filename = "PCA_angus_blood_PC1_PC2.pdf",plot = pca_plot_12,width = 11,height = 8,units = "in")
+ggsave(filename = "PCA_angus_blood_PC3_PC4.pdf",plot = pca_plot_34,width = 11,height = 8,units = "in")
 
 
 
@@ -285,7 +285,7 @@ variance_plot <- ggplot(
     expand = expansion(mult = c(0, 0.12))
   ) +
   labs(
-    title = "Explained Variance - Angus liver",
+    title = "Explained Variance - Angus Blood",
     x = "Principal Components",
     y = "Variance Explained (%)"
   ) +
@@ -298,7 +298,7 @@ variance_plot <- ggplot(
 print(variance_plot)
 
 ggsave(
-  filename = "PCA_variance_angus_liver.pdf",
+  filename = "PCA_variance_angus_blood.pdf",
   plot = variance_plot,
   width = 10,
   height = 6,
@@ -313,26 +313,26 @@ ggsave(
 ######################################################################################################################################################################################
 
 ## Create QC dataframe, and we check for the CORR(PC1/2 vs Library SIZE)
-# if (is.null(sizeFactors(angus_liver_dds))) {
-#   angus_liver_dds <- estimateSizeFactors(angus_liver_dds)
+# if (is.null(sizeFactors(angus_blood_dds))) {
+#   angus_blood_dds <- estimateSizeFactors(angus_blood_dds)
 # }
 # 
 # qc_samples <- data.frame(
-#          SampleID = colnames(angus_liver_dds),
-#          LibrarySize = colSums(counts(angus_liver_dds)),
-#          SizeFactor = sizeFactors(angus_liver_dds))
+#          SampleID = colnames(angus_blood_dds),
+#          LibrarySize = colSums(counts(angus_blood_dds)),
+#          SizeFactor = sizeFactors(angus_blood_dds))
 # print(qc_samples)
 # 
-# pca_scores <- pca_angus_liver_dds$x[qc_samples$SampleID, c("PC1","PC2")]
+# pca_scores <- pca_angus_blood_dds$x[qc_samples$SampleID, c("PC1","PC2")]
 # correlation_libsize_PC1 <- cor(pca_scores[,"PC1"], log10(qc_samples$LibrarySize)) # -0.18
 # correlation_libsize_PC2 <- cor(pca_scores[,"PC2"], log10(qc_samples$LibrarySize)) # -0.48
 # 
 # # SECOND CHECK for the A19 sample:
-# detected_genes <- colSums(counts(angus_liver_dds) > 0)
+# detected_genes <- colSums(counts(angus_blood_dds) > 0)
 # qc_detected <- data.frame(
 #   SampleID = qc_samples$SampleID,
 #   Detected_Genes = detected_genes[qc_samples$SampleID],
-#   PC2 = pca_angus_liver_dds$x[qc_samples$SampleID, "PC2"]
+#   PC2 = pca_angus_blood_dds$x[qc_samples$SampleID, "PC2"]
 # )
 # 
 # qc_detected$A19 <- grepl("_A19_", qc_detected$SampleID)
@@ -358,7 +358,7 @@ ggsave(
 ######################################################################################################################################################################################
 
 # Extract the transformed matrix VST - The method removes the relationship between the mean & variance of count numbers
-vst_matrix <- assay(vst_angus_liver_dds)
+vst_matrix <- assay(vst_angus_blood_dds)
 
 gene_sd <- apply(vst_matrix, 1, sd)
 gene_sd <- sort(gene_sd[is.finite(gene_sd) & gene_sd > 0], decreasing = TRUE)
@@ -478,3 +478,15 @@ heatmap_plots <- list(
 for (filename in names(heatmap_plots)) {
   ggsave(filename = filename, plot = heatmap_plots[[filename]]$gtable, width = 11,height = 8,units = "in")
 }
+
+# Save PCA scores, metadata and explained variance
+pca_results <- list(
+  pca_df = pca_df,
+  variance_explained = variance_explained,
+  pca_model = pca_angus_blood_dds
+)
+
+saveRDS(
+  pca_results,
+  "PCA_Angus_Blood_Results_blood.rds"
+)
